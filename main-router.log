@@ -1,0 +1,72 @@
+2026-03-18 14:49:15 POST /api/auth/login
+  -> path: 'api/auth/login'
+  -> ROUTING TO API
+  -> API file: C:\Users\HP\Documents\site\MALOTY\backend\api\index.php
+2026-03-18 14:49:30 POST /api/auth/login
+  -> path: 'api/auth/login'
+  -> ROUTING TO API
+  -> API file: C:\Users\HP\Documents\site\MALOTY\backend\api\index.php
+2026-03-18 14:49:36 GET /index.php?controller=dashboard&action=index
+  -> path: 'index.php'
+2026-03-18 14:49:38 GET /index.php?controller=dashboard&action=index
+  -> path: 'index.php'
+2026-03-18 14:49:48 GET /index.php?controller=dashboard&action=index
+  -> path: 'index.php'
+2026-03-18 14:49:49 GET /index.php?controller=dashboard&action=index
+  -> path: 'index.php'
+2026-03-18 14:49:55 GET /
+  -> path: ''
+2026-03-18 14:49:58 POST /api/auth/login
+  -> path: 'api/auth/login'
+  -> ROUTING TO API
+  -> API file: C:\Users\HP\Documents\site\MALOTY\backend\api\index.php
+2026-03-18 14:51:00 POST /api/auth/login
+  -> path: 'api/auth/login'
+  -> ROUTING TO API
+  -> API file: C:\Users\HP\Documents\site\MALOTY\backend\api\index.php
+2026-03-18 14:52:11 POST /api/auth/login
+  -> path: 'api/auth/login'
+  -> ROUTING TO API
+  -> API file: C:\Users\HP\Documents\site\MALOTY\backend\api\index.php
+2026-03-18 14:52:38 POST /api/auth/login
+  -> path: 'api/auth/login'
+  -> ROUTING TO API
+  -> API file: C:\Users\HP\Documents\site\MALOTY\backend\api\index.php
+2026-03-18 14:52:52 GET /
+  -> path: ''
+2026-03-18 14:52:54 POST /api/auth/login
+  -> path: 'api/auth/login'
+  -> ROUTING TO API
+  -> API file: C:\Users\HP\Documents\site\MALOTY\backend\api\index.php
+2026-03-18 14:53:01 POST /api/auth/login
+  -> path: 'api/auth/login'
+  -> ROUTING TO API
+  -> API file: C:\Users\HP\Documents\site\MALOTY\backend\api\index.php
+2026-03-18 14:54:40 POST /api/auth/login
+  -> path: 'api/auth/login'
+  -> ROUTING TO API
+  -> API file: C:\Users\HP\Documents\site\MALOTY\backend\api\index.php
+2026-03-18 14:55:03 POST /api/auth/login
+  -> path: 'api/auth/login'
+  -> ROUTING TO API
+  -> API file: C:\Users\HP\Documents\site\MALOTY\backend\api\index.php
+2026-03-18 14:56:03 POST /api/auth/login
+  -> path: 'api/auth/login'
+  -> ROUTING TO API
+  -> API file: C:\Users\HP\Documents\site\MALOTY\backend\api\index.php
+2026-03-18 14:56:07 GET /
+  -> path: ''
+2026-03-18 14:56:08 POST /api/auth/login
+  -> path: 'api/auth/login'
+  -> ROUTING TO API
+  -> API file: C:\Users\HP\Documents\site\MALOTY\backend\api\index.php
+2026-03-18 14:57:32 POST /api/auth/login
+  -> path: 'api/auth/login'
+  -> ROUTING TO API
+  -> API file: C:\Users\HP\Documents\site\MALOTY\backend\api\index.php
+2026-03-18 14:57:55 GET /
+  -> path: ''
+2026-03-18 14:57:57 POST /api/auth/login
+  -> path: 'api/auth/login'
+  -> ROUTING TO API
+  -> API file: C:\Users\HP\Documents\site\MALOTY\backend\api\index.php

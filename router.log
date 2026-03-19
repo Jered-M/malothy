@@ -1,0 +1,76 @@
+2026-03-18 14:54:40 API ROUTER STARTED
+  -> Headers set
+  -> PROJECT_ROOT: C:\Users\HP\Documents\site\MALOTY
+  -> Loading api-config.php
+  -> database.php STARTED
+  -> .env.php loaded, DB_HOST=127.0.0.1
+  -> api-config.php loaded
+  -> path parsed: 'auth/login'
+  -> resource: 'Auth', action: 'login'
+  -> controllerFile: C:\Users\HP\Documents\site\MALOTY/backend/api/controllers/AuthController.php
+  -> controller file exists, requiring it
+  -> EXCEPTION HANDLER: Class "ApiAuthController" not found
+2026-03-18 14:55:03 API ROUTER STARTED
+  -> Headers set
+  -> PROJECT_ROOT: C:\Users\HP\Documents\site\MALOTY
+  -> Loading api-config.php
+  -> database.php STARTED
+  -> .env.php loaded, DB_HOST=127.0.0.1
+  -> api-config.php loaded
+  -> path parsed: 'auth/login'
+  -> resource: 'Auth', action: 'login'
+  -> controllerFile: C:\Users\HP\Documents\site\MALOTY/backend/api/controllers/AuthController.php
+  -> controller file exists, requiring it
+  -> EXCEPTION HANDLER: Class "ApiAuthController" not found
+2026-03-18 14:56:03 API ROUTER STARTED
+  -> Headers set
+  -> PROJECT_ROOT: C:\Users\HP\Documents\site\MALOTY
+  -> Loading api-config.php
+  -> database.php STARTED
+  -> .env.php loaded, DB_HOST=127.0.0.1
+  -> api-config.php loaded
+  -> path parsed: 'auth/login'
+  -> resource: 'Auth', action: 'login'
+  -> controllerFile: C:\Users\HP\Documents\site\MALOTY/backend/api/controllers/AuthController.php
+  -> controller file exists, requiring it
+  -> controller file required
+  -> controllerClass: 'AuthController'
+  -> class exists, creating instance
+  -> controller created, method: 'login'
+  -> method exists, calling
+  -> EXCEPTION HANDLER: Call to undefined function getCurrentUser()
+2026-03-18 14:56:08 API ROUTER STARTED
+  -> Headers set
+  -> PROJECT_ROOT: C:\Users\HP\Documents\site\MALOTY
+  -> Loading api-config.php
+  -> database.php STARTED
+  -> .env.php loaded, DB_HOST=127.0.0.1
+  -> api-config.php loaded
+  -> path parsed: 'auth/login'
+  -> resource: 'Auth', action: 'login'
+  -> controllerFile: C:\Users\HP\Documents\site\MALOTY/backend/api/controllers/AuthController.php
+  -> controller file exists, requiring it
+  -> controller file required
+  -> controllerClass: 'AuthController'
+  -> class exists, creating instance
+  -> controller created, method: 'login'
+  -> method exists, calling
+  -> EXCEPTION HANDLER: Call to undefined function getCurrentUser()
+2026-03-18 14:57:32 API ROUTER STARTED
+  -> Headers set
+  -> PROJECT_ROOT: C:\Users\HP\Documents\site\MALOTY
+  -> Loading api-config.php
+  -> database.php STARTED
+  -> .env.php loaded, DB_HOST=127.0.0.1
+  -> api-config.php loaded
+  -> path parsed: 'auth/login'
+  -> resource: 'Auth', action: 'login'
+  -> controllerFile: C:\Users\HP\Documents\site\MALOTY/backend/api/controllers/AuthController.php
+  -> controller file exists, requiring it
+  -> controller file required
+  -> controllerClass: 'AuthController'
+  -> class exists, creating instance
+  -> controller created, method: 'login'
+  -> method exists, calling
+  -> database.php STARTED
+  -> .env.php loaded, DB_HOST=127.0.0.1
