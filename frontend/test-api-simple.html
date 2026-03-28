@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test API Simple</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .box { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; }
+        .ok { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Test API Simple</h1>
+    <div class="box" id="status"></div>
+
+    <script>
+        async function test() {
+            const status = document.getElementById('status');
+            
+            // Test 1: Vérifier que fetch fonctionne
+            status.innerHTML = '<p>⏳ Test 1: Vérification fetch...</p>';
+            console.log('✅ Script chargé');
+            
+            try {
+                // Test 2: Vérifier que le serveur répond
+                status.innerHTML += '<p>⏳ Test 2: Ping au serveur...</p>';
+                const pingRes = await fetch('/');
+                console.log('Ping status:', pingRes.status);
+                status.innerHTML += `<p class="ok">✅ Serveur répond: ${pingRes.status}</p>`;
+                
+                // Test 3: Tester l'endpoint /api/
+                status.innerHTML += '<p>⏳ Test 3: Appel /api/...</p>';
+                const apiRes = await fetch('/api/');
+                console.log('API status:', apiRes.status);
+                status.innerHTML += `<p class="ok">✅ /api/ répond: ${apiRes.status}</p>`;
+                
+                // Test 4: Tenter la connexion
+                status.innerHTML += '<p>⏳ Test 4: POST /api/auth/login...</p>';
+                const loginRes = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@maloty.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                const loginData = await loginRes.json();
+                console.log('Login response:', loginRes.status, loginData);
+                
+                if (loginRes.ok && loginData.success) {
+                    status.innerHTML += `<p class="ok">✅ Connexion réussie!</p>`;
+                    status.innerHTML += `<p>User: ${loginData.user.name}</p>`;
+                } else {
+                    status.innerHTML += `<p class="error">❌ Connexion échouée: ${loginData.error || 'Unknown error'}</p>`;
+                }
+                
+            } catch (e) {
+                console.error('ERREUR:', e);
+                status.innerHTML += `<p class="error">❌ ERREUR: ${e.message}</p>`;
+            }
+        }
+        
+        test();
+    </script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion Simple</title>
+    <style>
+        body {
+            font-family: Arial; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .form-box {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 { color: #333; margin: 0 0 20px 0; }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            margin: 20px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button:hover { opacity: 0.9; }
+        #log {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="form-box">
+        <h1>🏛️ MALOTY</h1>
+        
+        <form id="loginForm">
+            <input type="email" id="email" name="email" value="admin@maloty.com" placeholder="Email" required>
+            <input type="password" id="password" name="password" value="admin123" placeholder="Mot de passe" required>
+            <button type="submit">Connexion</button>
+        </form>
+
+        <div id="log">📋 Logs:</div>
+    </div>
+
+    <script>
+        const logDiv = document.getElementById('log');
+        let logs = ['📋 Logs:'];
+
+        function log(msg) {
+            console.log(msg);
+            logs.push(msg);
+            logDiv.textContent = logs.join('\n');
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        log('✅ Page chargée');
+        log('Cherche #loginForm...');
+        
+        const loginForm = document.getElementById('loginForm');
+        if (!loginForm) {
+            log('❌ #loginForm NOT FOUND!');
+        } else {
+            log('✅ #loginForm trouvé');
+        }
+
+        loginForm.addEventListener('submit', async (e) => {
+            log('1️⃣ Submit event déclenché');
+            e.preventDefault();
+            
+            log('2️⃣ Récupération email/password...');
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            log(`   Email: ${email}`);
+            log(`   Password: ${password ? '***' : '(empty)'}`);
+
+            log('3️⃣ Envoi POST à /api/auth/login...');
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                log(`4️⃣ Response status: ${response.status}`);
+                
+                const data = await response.json();
+                log('5️⃣ Response données:');
+                log(`   ${JSON.stringify(data)}`);
+
+                if (data.success) {
+                    log('6️⃣ ✅ CONNEXION RÉUSSIE!');
+                    log(`   Token: ${data.token.substring(0, 20)}...`);
+                    log(`   User: ${data.user.name}`);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('token', data.token);
+                    log('7️⃣ Données sauvegardées en localStorage');
+                    log('CLIQUEZ: Ouvrez http://192.168.43.147:8000/ pour voir le dashboard');
+                } else {
+                    log(`❌ ERREUR: ${data.error}`);
+                }
+            } catch (e) {
+                log(`❌ ERREUR RÉSEAU/FETCH: ${e.message}`);
+                log(e.stack);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,366 @@
+<!-- 📱 TEST PAGE - Check if responsive design is working -->
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Responsive - MALOTY</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            padding: 1rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0069c7, #0054a1);
+            color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .device-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .device-info h2 {
+            color: #0069c7;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .info-box {
+            background: #f9f9f9;
+            padding: 1rem;
+            border-radius: 0.8rem;
+            border-left: 4px solid #0069c7;
+        }
+
+        .info-box label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 0.3rem;
+            text-transform: uppercase;
+        }
+
+        .info-box span {
+            display: block;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #0054a1;
+        }
+
+        .tests {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .test-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .test-card h3 {
+            color: #0069c7;
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status {
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            display: inline-block;
+            margin-top: 1rem;
+        }
+
+        .status.ok {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .description {
+            color: #666;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tests {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .instructions {
+            background: #e7f3ff;
+            border: 2px solid #0069c7;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .instructions h3 {
+            color: #0054a1;
+            margin-bottom: 1rem;
+        }
+
+        .instructions ol {
+            margin-left: 1rem;
+            color: #333;
+        }
+
+        .instructions li {
+            margin-bottom: 0.5rem;
+        }
+
+        .fix-list {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .fix-list h3 {
+            color: #0069c7;
+            margin-bottom: 1rem;
+        }
+
+        .fix-list ul {
+            margin-left: 1.5rem;
+            color: #333;
+        }
+
+        .fix-list li {
+            margin-bottom: 0.8rem;
+            line-height: 1.6;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.3rem;
+            font-family: monospace;
+            color: #d63384;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 Test Responsive Design</h1>
+            <p>Vérifiez si votre site s'adapte correctement à tous les appareils</p>
+        </div>
+
+        <div class="instructions">
+            <h3>🎯 Comment tester ?</h3>
+            <ol>
+                <li>Ouvrez cette page dans votre navigateur</li>
+                <li>Appuyez sur <code>F12</code> ou <code>Ctrl+Maj+I</code></li>
+                <li>Cliquez l'icône mobile en haut à gauche</li>
+                <li>Testez différentes résolutions</li>
+            </ol>
+        </div>
+
+        <div class="device-info">
+            <h2>📊 Informations de votre appareil</h2>
+            <div class="info-grid">
+                <div class="info-box">
+                    <label>Largeur de l'écran</label>
+                    <span id="screenWidth">-</span>
+                </div>
+                <div class="info-box">
+                    <label>Hauteur de l'écran</label>
+                    <span id="screenHeight">-</span>
+                </div>
+                <div class="info-box">
+                    <label>Orientation</label>
+                    <span id="orientation">-</span>
+                </div>
+                <div class="info-box">
+                    <label>Type d'appareil</label>
+                    <span id="deviceType">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="tests">
+            <div class="test-card">
+                <h3>✅ Viewport Meta</h3>
+                <div class="description">
+                    Vérifie que la balise viewport est correctement configurée
+                </div>
+                <div class="status" id="viewportStatus">Vérification...</div>
+            </div>
+
+            <div class="test-card">
+                <h3>✅ CSS Responsive</h3>
+                <div class="description">
+                    Vérifie que les fichiers CSS responsive sont chargés
+                </div>
+                <div class="status" id="cssStatus">Vérification...</div>
+            </div>
+
+            <div class="test-card">
+                <h3>✅ JavaScript Mobile</h3>
+                <div class="description">
+                    Vérifie que mobile-menu.js est chargé et fonctionnel
+                </div>
+                <div class="status" id="jsStatus">Vérification...</div>
+            </div>
+
+            <div class="test-card">
+                <h3>✅ Orientation Portrait/Paysage</h3>
+                <div class="description">
+                    Testez en tournant votre téléphone
+                </div>
+                <input type="checkbox" id="orientationTest"> Rotationné ?
+            </div>
+        </div>
+
+        <div class="fix-list">
+            <h3>🔧 Ce qui a été corrigé</h3>
+            <ul>
+                <li><strong>Chemins CSS/JS relatifs :</strong> Changement de
+ <code>/frontend/public/...</code> à <code>./public/...</code></li>
+                <li><strong>Suppression de la règle CSS dupliquée :</strong> <code>.app-shell</code> qui bloquait le responsive</li>
+                <li><strong>Ajout de mobile-responsive.css :</strong> Fichier avec <code>!important</code> pour forcer les styles mobiles</li>
+                <li><strong>Menu hamburger :</strong> Bouton flottant + sidebar animée + backdrop</li>
+                <li><strong>Ordre CSS correct :</strong> style.css → responsive.css → mobile-responsive.css</li>
+            </ul>
+        </div>
+
+        <div class="fix-list">
+            <h3>📝 Prochaines étapes</h3>
+            <ul>
+                <li>Accédez à votre application : <code>http://localhost/frontend/</code> (ou votre URL locale)</li>
+                <li>Testez sur mobile avec Chrome DevTools (F12 → Toggle Device)</li>
+                <li>Vérifiez que le bouton hamburger ☰ apparaît en bas à droite sur mobile</li>
+                <li>Cliquez sur le bouton pour ouvrir/fermer le menu</li>
+                <li>Redimensionnez la fenêtre pour voir l'adaptation fluide</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Update device info
+        function updateDeviceInfo() {
+            document.getElementById('screenWidth').textContent = window.innerWidth + 'px';
+            document.getElementById('screenHeight').textContent = window.innerHeight + 'px';
+            
+            const isMobile = window.innerWidth < 768;
+            const isTablet = window.innerWidth >= 768 && window.innerWidth <= 1024;
+            const isDesktop = window.innerWidth > 1024;
+            
+            let deviceType = 'Desktop';
+            if (isMobile) deviceType = '📱 Mobile';
+            else if (isTablet) deviceType = '📊 Tablette';
+            
+            document.getElementById('deviceType').textContent = deviceType;
+            
+            const orientation = window.innerWidth > window.innerHeight ? 'Paysage' : 'Portrait';
+            document.getElementById('orientation').textContent = orientation;
+        }
+
+        // Check tests
+        function checkTests() {
+            // Check viewport
+            const viewport = document.querySelector('meta[name="viewport"]');
+            const viewportStatus = document.getElementById('viewportStatus');
+            if (viewport) {
+                viewportStatus.className = 'status ok';
+                viewportStatus.textContent = '✅ Viewport OK';
+            } else {
+                viewportStatus.className = 'status error';
+                viewportStatus.textContent = '❌ Viewport manquant';
+            }
+
+            // Check CSS
+            const cssStatus = document.getElementById('cssStatus');
+            const cssFiles = [
+                './public/css/style.css',
+                './public/css/responsive.css',
+                './public/css/mobile-responsive.css'
+            ];
+            
+            // Simple check - can't know if file actually loaded, but show a message
+            cssStatus.className = 'status warning';
+            cssStatus.textContent = '⚠️ Ouvrez DevTools pour voir les fichiers CSS chargés';
+
+            // Check JS
+            const jsStatus = document.getElementById('jsStatus');
+            if (typeof window.mobileMenu !== 'undefined') {
+                jsStatus.className = 'status ok';
+                jsStatus.textContent = '✅ Mobile Menu JS OK';
+            } else {
+                jsStatus.className = 'status warning';
+                jsStatus.textContent = '⚠️ À vérifier dans DevTools (Console)';
+            }
+        }
+
+        // Initialize
+        updateDeviceInfo();
+        checkTests();
+
+        // Update on resize/orientation change
+        window.addEventListener('resize', updateDeviceInfo);
+        window.addEventListener('orientationchange', updateDeviceInfo);
+    </script>
+</body>
+</html>

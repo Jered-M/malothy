@@ -49,7 +49,17 @@ class App {
                 const url = page === 'dashboard' ? '/' : `/${page}`;
                 history.pushState({ page }, '', url);
                 this.navigate(page);
+                
+                // Fermer la sidebar après clic sur un lien mobile
+                this.setSidebarOpen(false);
                 return;
+            }
+
+            // Gérer le toggle de la sidebar mobile
+            if (e.target.closest('#sidebarToggle')) {
+                this.setSidebarOpen(true);
+            } else if (e.target.closest('#sidebarClose') || e.target.closest('#sidebarOverlay')) {
+                this.setSidebarOpen(false);
             }
         });
 
@@ -200,6 +210,28 @@ class App {
             
         } catch (error) {
             console.error('Erreur de navigation:', error);
+        }
+    }
+
+    setSidebarOpen(isOpen) {
+        const sidebar = document.querySelector('.app-sidebar');
+        const overlay = document.querySelector('#sidebarOverlay');
+        if (!sidebar) return;
+
+        if (isOpen) {
+            sidebar.classList.add('is-open');
+            if (overlay) {
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.add('opacity-100'), 10);
+            }
+            document.body.style.overflow = 'hidden'; // Empêcher le scroll
+        } else {
+            sidebar.classList.remove('is-open');
+            if (overlay) {
+                overlay.classList.remove('opacity-100');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+            document.body.style.overflow = '';
         }
     }
 

@@ -72,12 +72,28 @@ class UI {
     static shell(activePage, content) {
         return `
             <div class="app-shell">
+                <!-- Mobile Header Toggle (Visible only on mobile) -->
+                <header class="mobile-top-bar lg:hidden flex items-center justify-between p-4 bg-white border-b border-slate-200 w-full fixed top-0 left-0 z-[60] shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-md">
+                            <i class="fas fa-church"></i>
+                        </div>
+                        <span class="font-black text-slate-900 tracking-tight">MALOTY</span>
+                    </div>
+                    <button id="sidebarToggle" class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </header>
+
                 ${this.sidebar(activePage)}
                 <main class="app-main">
                     <div class="app-main-inner">
                         ${content}
                     </div>
                 </main>
+
+                <!-- Overlay for mobile sidebar -->
+                <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden lg:hidden opacity-0 transition-opacity duration-300"></div>
             </div>
         `;
     }
@@ -98,11 +114,17 @@ class UI {
         return `
             <aside class="app-sidebar shadow-2xl">
                 <div class="mb-4">
-                    <div class="flex items-center gap-4 mb-8">
-                        <div class="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg">
-                            <i class="fas fa-church"></i>
+                    <div class="flex items-center justify-between gap-4 mb-8">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg">
+                                <i class="fas fa-church"></i>
+                            </div>
+                            <h1 class="text-xl font-black tracking-tight text-white uppercase">MALOTY</h1>
                         </div>
-                        <h1 class="text-xl font-black tracking-tight text-white uppercase">MALOTY</h1>
+                        <!-- Close button for mobile -->
+                        <button id="sidebarClose" class="lg:hidden w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white hover:bg-white/20">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                 </div>
 

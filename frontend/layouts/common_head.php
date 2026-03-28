@@ -19,6 +19,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/frontend/public/css/style.css">
+    <link rel="stylesheet" href="/frontend/public/css/responsive.css">
     <script>
         tailwind.config = {
             theme: {
