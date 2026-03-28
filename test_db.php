@@ -1,4 +1,5 @@
 <?php
+define('PROJECT_ROOT', __DIR__);
 require_once __DIR__ . '/backend/config/api-config.php';
 require_once __DIR__ . '/backend/models/User.php';
 
