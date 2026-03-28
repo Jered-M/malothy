@@ -25,7 +25,8 @@ class Database {
             $dbPass = getenv('DB_PASSWORD') ?: (defined('DB_PASSWORD') ? DB_PASSWORD : '');
             
             if ($driver === 'pgsql') {
-                $dsn = "pgsql:host={$dbHost};port={$dbPort};dbname={$dbName}";
+                // SSL est obligatoire pour Supabase
+                $dsn = "pgsql:host={$dbHost};port={$dbPort};dbname={$dbName};sslmode=require";
             } else {
                 $dsn = "mysql:host={$dbHost};port={$dbPort};dbname={$dbName};charset=utf8mb4";
             }
