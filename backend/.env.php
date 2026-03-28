@@ -23,16 +23,25 @@ if (file_exists(dirname(__DIR__) . '/.env')) {
     }
 }
 
-// Valeurs par défaut
-if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
-if (!defined('DB_USER')) define('DB_USER', 'root');
-if (!defined('DB_PASSWORD')) define('DB_PASSWORD', '');
-if (!defined('DB_NAME')) define('DB_NAME', 'eglise_m');
-if (!defined('DB_PORT')) define('DB_PORT', 3306);
-if (!defined('APP_NAME')) define('APP_NAME', 'MALOTY - Gestion d\'Église');
-if (!defined('APP_URL')) define('APP_URL', 'http://localhost');
-if (!defined('APP_DEBUG')) define('APP_DEBUG', true);
-if (!defined('SESSION_TIMEOUT')) define('SESSION_TIMEOUT', 3600);
+// Fonction utilitaire pour définir une constante depuis l'environnement ou une valeur par défaut
+function defineFromEnv($key, $default) {
+    if (!defined($key)) {
+        $val = getenv($key) ?: $default;
+        define($key, $val);
+    }
+}
+
+// Valeurs par défaut avec priorité sur getenv()
+defineFromEnv('DB_DRIVER', 'mysql');
+defineFromEnv('DB_HOST', 'localhost');
+defineFromEnv('DB_USER', 'root');
+defineFromEnv('DB_PASSWORD', '');
+defineFromEnv('DB_NAME', 'eglise_m');
+defineFromEnv('DB_PORT', 3306);
+defineFromEnv('APP_NAME', 'MALOTY - Gestion d\'Église');
+defineFromEnv('APP_URL', 'http://localhost');
+defineFromEnv('APP_DEBUG', true);
+defineFromEnv('SESSION_TIMEOUT', 3600);
 
 // Constantes de l'application - NE PAS REDÉFINIR si déjà défini
 if (!defined('PROJECT_ROOT')) {

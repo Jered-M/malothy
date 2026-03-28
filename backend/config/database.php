@@ -11,19 +11,29 @@ class Database {
 
     private function __construct() {
         try {
-            // Déterminer le driver (mysql par défaut pour le local, pgsql pour Supabase)
-            $driver = defined('DB_DRIVER') ? DB_DRIVER : (strpos(DB_HOST, 'supabase') !== false ? 'pgsql' : 'mysql');
+            // Détection robuste du driver
+            $dbHost = getenv('DB_HOST') ?: (defined('DB_HOST') ? DB_HOST : 'localhost');
+            $driver = getenv('DB_DRIVER') ?: (defined('DB_DRIVER') ? DB_DRIVER : '');
+
+            if (empty($driver)) {
+                $driver = (strpos($dbHost, 'supabase') !== false || strpos($dbHost, 'pooler') !== false) ? 'pgsql' : 'mysql';
+            }
+
+            $dbPort = getenv('DB_PORT') ?: (defined('DB_PORT') ? DB_PORT : ($driver === 'pgsql' ? '6543' : '3306'));
+            $dbName = getenv('DB_NAME') ?: (defined('DB_NAME') ? DB_NAME : '');
+            $dbUser = getenv('DB_USER') ?: (defined('DB_USER') ? DB_USER : '');
+            $dbPass = getenv('DB_PASSWORD') ?: (defined('DB_PASSWORD') ? DB_PASSWORD : '');
             
             if ($driver === 'pgsql') {
-                $dsn = "pgsql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME;
+                $dsn = "pgsql:host={$dbHost};port={$dbPort};dbname={$dbName}";
             } else {
-                $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+                $dsn = "mysql:host={$dbHost};port={$dbPort};dbname={$dbName};charset=utf8mb4";
             }
             
             $this->connection = new PDO(
                 $dsn,
-                DB_USER,
-                DB_PASSWORD,
+                $dbUser,
+                $dbPass,
                 [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
