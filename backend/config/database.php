@@ -11,7 +11,14 @@ class Database {
 
     private function __construct() {
         try {
-            $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+            // Déterminer le driver (mysql par défaut pour le local, pgsql pour Supabase)
+            $driver = defined('DB_DRIVER') ? DB_DRIVER : (strpos(DB_HOST, 'supabase') !== false ? 'pgsql' : 'mysql');
+            
+            if ($driver === 'pgsql') {
+                $dsn = "pgsql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME;
+            } else {
+                $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+            }
             
             $this->connection = new PDO(
                 $dsn,
