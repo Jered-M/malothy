@@ -24,6 +24,11 @@ class Database {
             $dbUser = getenv('DB_USER') ?: (defined('DB_USER') ? DB_USER : '');
             $dbPass = getenv('DB_PASSWORD') ?: (defined('DB_PASSWORD') ? DB_PASSWORD : '');
             
+            // AUTO-FIX: Si host est Supabase Pooler et user est 'postgres', on ajoute le tenant id
+            if ($driver === 'pgsql' && strpos($dbHost, 'pooler.supabase.com') !== false && $dbUser === 'postgres') {
+                $dbUser = 'postgres.jxlhjeqyrtrnhziuizlw';
+            }
+
             if ($driver === 'pgsql') {
                 // SSL est obligatoire pour Supabase
                 $dsn = "pgsql:host={$dbHost};port={$dbPort};dbname={$dbName};sslmode=require";
