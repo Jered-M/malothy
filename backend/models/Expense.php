@@ -33,12 +33,12 @@ class Expense extends BaseModel {
         }
 
         if ($startDate) {
-            $sql .= " AND DATE(expense_date) >= ?";
+            $sql .= " AND expense_date >= ?";
             $params[] = $startDate;
         }
 
         if ($endDate) {
-            $sql .= " AND DATE(expense_date) <= ?";
+            $sql .= " AND expense_date <= ?";
             $params[] = $endDate;
         }
 
@@ -58,7 +58,7 @@ class Expense extends BaseModel {
     public function getMonthlyTotal($year, $month) {
         $result = $this->queryOne(
             "SELECT SUM(amount) as total FROM {$this->table} 
-             WHERE YEAR(expense_date) = ? AND MONTH(expense_date) = ? AND status != 'rejetee'",
+             WHERE EXTRACT(YEAR FROM expense_date) = ? AND EXTRACT(MONTH FROM expense_date) = ? AND status != 'rejetee'",
             [$year, $month]
         );
 
@@ -74,12 +74,12 @@ class Expense extends BaseModel {
         $params = [];
 
         if ($startDate) {
-            $sql .= " AND DATE(expense_date) >= ?";
+            $sql .= " AND expense_date >= ?";
             $params[] = $startDate;
         }
 
         if ($endDate) {
-            $sql .= " AND DATE(expense_date) <= ?";
+            $sql .= " AND expense_date <= ?";
             $params[] = $endDate;
         }
 
@@ -94,7 +94,7 @@ class Expense extends BaseModel {
     public function getYearlyTotal($year) {
         $result = $this->queryOne(
             "SELECT SUM(amount) as total FROM {$this->table} 
-             WHERE YEAR(expense_date) = ? AND status != 'rejetee'",
+             WHERE EXTRACT(YEAR FROM expense_date) = ? AND status != 'rejetee'",
             [$year]
         );
 

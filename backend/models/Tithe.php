@@ -35,12 +35,12 @@ class Tithe extends BaseModel {
         }
 
         if ($startDate) {
-            $sql .= " AND DATE(t.tithe_date) >= ?";
+            $sql .= " AND t.tithe_date >= ?";
             $params[] = $startDate;
         }
 
         if ($endDate) {
-            $sql .= " AND DATE(t.tithe_date) <= ?";
+            $sql .= " AND t.tithe_date <= ?";
             $params[] = $endDate;
         }
 
@@ -55,7 +55,7 @@ class Tithe extends BaseModel {
     public function getMonthlyTotal($year, $month) {
         $result = $this->queryOne(
             "SELECT SUM(amount) as total FROM {$this->table} 
-             WHERE YEAR(tithe_date) = ? AND MONTH(tithe_date) = ?",
+             WHERE EXTRACT(YEAR FROM tithe_date) = ? AND EXTRACT(MONTH FROM tithe_date) = ?",
             [$year, $month]
         );
 
@@ -70,7 +70,7 @@ class Tithe extends BaseModel {
         $params = [$memberId];
 
         if ($year) {
-            $sql .= " AND YEAR(tithe_date) = ?";
+            $sql .= " AND EXTRACT(YEAR FROM tithe_date) = ?";
             $params[] = $year;
         }
 
@@ -87,7 +87,7 @@ class Tithe extends BaseModel {
      */
     public function getYearlyTotal($year) {
         $result = $this->queryOne(
-            "SELECT SUM(amount) as total FROM {$this->table} WHERE YEAR(tithe_date) = ?",
+            "SELECT SUM(amount) as total FROM {$this->table} WHERE EXTRACT(YEAR FROM tithe_date) = ?",
             [$year]
         );
 

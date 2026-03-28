@@ -33,17 +33,17 @@ class DashboardController {
     private function getStats() {
         $db = Database::getInstance()->getConnection();
 
-        // Total membres
-        $members = $db->query('SELECT COUNT(*) as count FROM members WHERE status = "actif"')->fetch();
+        // Total membres (PostgreSQL: guillemets simples pour 'actif')
+        $members = $db->query("SELECT COUNT(*) as count FROM members WHERE status = 'actif'")->fetch();
         
-        // Dîmes ce mois
-        $tithes = $db->query('SELECT SUM(amount) as total FROM tithes WHERE YEAR(tithe_date) = YEAR(NOW()) AND MONTH(tithe_date) = MONTH(NOW())')->fetch();
+        // Dîmes ce mois (PostgreSQL: EXTRACT)
+        $tithes = $db->query("SELECT SUM(amount) as total FROM tithes WHERE EXTRACT(YEAR FROM tithe_date) = EXTRACT(YEAR FROM CURRENT_DATE) AND EXTRACT(MONTH FROM tithe_date) = EXTRACT(MONTH FROM CURRENT_DATE)")->fetch();
         
         // Offrandes ce mois
-        $offerings = $db->query('SELECT SUM(amount) as total FROM offerings WHERE YEAR(offering_date) = YEAR(NOW()) AND MONTH(offering_date) = MONTH(NOW())')->fetch();
+        $offerings = $db->query("SELECT SUM(amount) as total FROM offerings WHERE EXTRACT(YEAR FROM offering_date) = EXTRACT(YEAR FROM CURRENT_DATE) AND EXTRACT(MONTH FROM offering_date) = EXTRACT(MONTH FROM CURRENT_DATE)")->fetch();
         
         // Dépenses ce mois
-        $expenses = $db->query('SELECT SUM(amount) as total FROM expenses WHERE YEAR(expense_date) = YEAR(NOW()) AND MONTH(expense_date) = MONTH(NOW())')->fetch();
+        $expenses = $db->query("SELECT SUM(amount) as total FROM expenses WHERE EXTRACT(YEAR FROM expense_date) = EXTRACT(YEAR FROM CURRENT_DATE) AND EXTRACT(MONTH FROM expense_date) = EXTRACT(MONTH FROM CURRENT_DATE)")->fetch();
 
         return [
             'totalMembers' => (int)($members['count'] ?? 0),

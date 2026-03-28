@@ -33,12 +33,12 @@ class Offering extends BaseModel {
         }
 
         if ($startDate) {
-            $sql .= " AND DATE(offering_date) >= ?";
+            $sql .= " AND offering_date >= ?";
             $params[] = $startDate;
         }
 
         if ($endDate) {
-            $sql .= " AND DATE(offering_date) <= ?";
+            $sql .= " AND offering_date <= ?";
             $params[] = $endDate;
         }
 
@@ -53,7 +53,7 @@ class Offering extends BaseModel {
     public function getMonthlyTotal($year, $month) {
         $result = $this->queryOne(
             "SELECT SUM(amount) as total FROM {$this->table} 
-             WHERE YEAR(offering_date) = ? AND MONTH(offering_date) = ?",
+             WHERE EXTRACT(YEAR FROM offering_date) = ? AND EXTRACT(MONTH FROM offering_date) = ?",
             [$year, $month]
         );
 
@@ -68,12 +68,12 @@ class Offering extends BaseModel {
         $params = [];
 
         if ($startDate) {
-            $sql .= " AND DATE(offering_date) >= ?";
+            $sql .= " AND offering_date >= ?";
             $params[] = $startDate;
         }
 
         if ($endDate) {
-            $sql .= " AND DATE(offering_date) <= ?";
+            $sql .= " AND offering_date <= ?";
             $params[] = $endDate;
         }
 
@@ -87,7 +87,7 @@ class Offering extends BaseModel {
      */
     public function getYearlyTotal($year) {
         $result = $this->queryOne(
-            "SELECT SUM(amount) as total FROM {$this->table} WHERE YEAR(offering_date) = ?",
+            "SELECT SUM(amount) as total FROM {$this->table} WHERE EXTRACT(YEAR FROM offering_date) = ?",
             [$year]
         );
 
