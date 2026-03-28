@@ -22,12 +22,22 @@ if (session_status() === PHP_SESSION_NONE) {
 // Charger les dépendances
 require_once PROJECT_ROOT . '/backend/config/database.php';
 
-// Headers CORS (Dynamique pour supporter localhost et production)
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-header("Access-Control-Allow-Origin: $origin");
+// Headers CORS (Optimisé pour production et local)
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowed_origins = ['http://localhost:8000', 'https://malothy.onrender.com'];
+
+if (in_array($origin, $allowed_origins)) {
+    header("Access-Control-Allow-Origin: $origin");
+    header('Access-Control-Allow-Credentials: true');
+} else if (empty($origin)) {
+    // Requête de même origine (Same-origin), pas d'en-tête nécessaire mais on peut laisser passer pour le dev local sans Origin header
+} else {
+    // En dernier recours pour le dev, mais plus de Credentials
+    header('Access-Control-Allow-Origin: *');
+}
+
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
-header('Access-Control-Allow-Credentials: true');
 
 // Gestion CORS preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

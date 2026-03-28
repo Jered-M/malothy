@@ -26,18 +26,32 @@ if (file_exists(dirname(__DIR__) . '/.env')) {
 // Fonction utilitaire pour définir une constante depuis l'environnement ou une valeur par défaut
 function defineFromEnv($key, $default) {
     if (!defined($key)) {
-        $val = getenv($key) ?: $default;
+        // Tentative de récupération depuis plusieurs sources (PHP sur Render/Docker)
+        $val = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+        
+        // Si non trouvé dans l'env, utiliser le défaut
+        if ($val === false || $val === null || $val === '') {
+            $val = $default;
+        }
+        
         define($key, $val);
     }
 }
 
 // Valeurs par défaut avec priorité sur getenv()
-defineFromEnv('DB_DRIVER', 'mysql');
+$envHost = $_ENV['DB_HOST'] ?? $_SERVER['DB_HOST'] ?? getenv('DB_HOST') ?: 'localhost';
+$defaultDriver = (strpos($envHost, 'supabase') !== false || strpos($envHost, 'pooler') !== false) ? 'pgsql' : 'mysql';
+
+defineFromEnv('DB_DRIVER', $defaultDriver);
 defineFromEnv('DB_HOST', 'localhost');
 defineFromEnv('DB_USER', 'root');
 defineFromEnv('DB_PASSWORD', '');
 defineFromEnv('DB_NAME', 'eglise_m');
-defineFromEnv('DB_PORT', 3306);
+
+// Port intelligent
+$defaultPort = (defined('DB_DRIVER') && DB_DRIVER === 'pgsql') ? 6543 : 3306;
+defineFromEnv('DB_PORT', $defaultPort);
+
 defineFromEnv('APP_NAME', 'MALOTY - Gestion d\'Église');
 defineFromEnv('APP_URL', 'http://localhost');
 defineFromEnv('APP_DEBUG', true);

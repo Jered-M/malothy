@@ -195,4 +195,4 @@ class APIClient {
 }
 
 // Singleton global
-const api = new APIClient();
+window.api = new APIClient();
