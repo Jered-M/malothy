@@ -46,7 +46,10 @@ defineFromEnv('DB_DRIVER', $defaultDriver);
 defineFromEnv('DB_HOST', 'localhost');
 defineFromEnv('DB_USER', 'root');
 defineFromEnv('DB_PASSWORD', '');
-defineFromEnv('DB_NAME', 'eglise_m');
+
+// Nom de base intelligent
+$defaultDbName = (defined('DB_DRIVER') && DB_DRIVER === 'pgsql') ? 'postgres' : 'eglise_m';
+defineFromEnv('DB_NAME', $defaultDbName);
 
 // Port intelligent
 $defaultPort = (defined('DB_DRIVER') && DB_DRIVER === 'pgsql') ? 6543 : 3306;
