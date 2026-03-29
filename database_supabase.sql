@@ -117,3 +117,6 @@ VALUES ('Administrateur', 'admin@maloty.com', '$2y$12$5RRkMsNu7e1Sx8fxFUM/i.5tPT
 
 INSERT INTO users (name, email, password, role, status)
 VALUES ('Trésorier', 'treasure@maloty.com', '$2y$12$X94B/Wo.RvINSjw3oT7kT.myY5N4ld44pjHqVhp4BJVgQJEY6efxm', 'trésorier', 'actif');
+
+INSERT INTO users (name, email, password, role, status)
+VALUES ('Secrétaire', 'secretary@maloty.com', '$2y$12$o7V7U/0x7vk7jlQCm8lZeuZY/dJlyp7d2j.EOnbZAHU4GWLT7ihn6', 'secrétaire', 'actif');
