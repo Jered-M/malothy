@@ -25,8 +25,9 @@ class User extends BaseModel {
      * Authentifier un utilisateur
      */
     public function authenticate($email, $password) {
+        $email = trim(strtolower($email));
         $user = $this->queryOne(
-            "SELECT * FROM {$this->table} WHERE email = ? AND status = 'actif'",
+            "SELECT * FROM {$this->table} WHERE LOWER(TRIM(email)) = ? AND status = 'actif'",
             [$email]
         );
 
