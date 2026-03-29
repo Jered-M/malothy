@@ -2,13 +2,7 @@
 window.logout = async function() {
     console.log('--- Déconnexion Initiale ---');
     try {
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-        if (window.app) window.app.currentUser = null;
-        
-        // On tente de prévenir le serveur mais on n'attend pas s'il est lent
-        api.post('/auth/logout').catch(e => console.warn('Silently failed API logout'));
-        
+        await api.logout();
         window.location.href = '/login';
     } catch (e) {
         console.error('Erreur Logout:', e);
@@ -243,19 +237,34 @@ class App {
                 e.preventDefault();
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
-                const result = await api.post('/auth/login', { email, password });
-                console.log('--- Login Debug ---');
-                console.log('Result:', result);
-                if (result.user) console.log('Found Role in Result:', result.user.role);
+                const submitButton = loginForm.querySelector('button[type="submit"]');
 
-                if (result.success) {
-                    localStorage.setItem('user', JSON.stringify(result.user));
-                    localStorage.setItem('token', result.token);
-                    this.currentUser = result.user;
-                    console.log('Current User now set to:', this.currentUser);
-                    this.navigate('dashboard');
-                } else {
-                    alert(result.error || 'Identifiants invalides');
+                try {
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                        submitButton.classList.add('opacity-70', 'cursor-not-allowed');
+                    }
+
+                    const result = await api.loginWith(email, password);
+                    console.log('--- Login Debug ---');
+                    console.log('Result:', result);
+                    if (result.user) console.log('Found Role in Result:', result.user.role);
+
+                    if (result.success) {
+                        this.currentUser = result.user;
+                        console.log('Current User now set to:', this.currentUser);
+                        history.replaceState({ page: 'dashboard' }, '', '/');
+                        this.navigate('dashboard');
+                    } else {
+                        alert(result.error || 'Identifiants invalides');
+                    }
+                } catch (error) {
+                    alert(error.message || 'Identifiants invalides');
+                } finally {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.classList.remove('opacity-70', 'cursor-not-allowed');
+                    }
                 }
             };
         }

@@ -175,7 +175,7 @@ INSERT INTO
 VALUES (
         'Administrateur',
         'admin@maloty.com',
-        '$2y$10$aUPR3fCdMGhFqEw4t8Z5Se2Z8v8Z8v8Z8v8Z8v8Z8v8Z8v8Z8v8Z2',
+        '$2y$12$5RRkMsNu7e1Sx8fxFUM/i.5tPT6mv2D97UWiCpEXlJB5xRqYYy7j.',
         'admin',
         'actif'
     );
@@ -192,7 +192,7 @@ INSERT INTO
 VALUES (
         'Trésorier',
         'treasure@maloty.com',
-        '$2y$10$bVPR3fCdMGhFqEw4t8Z5Se2Z8v8Z8v8Z8v8Z8v8Z8v8Z8v8Z8v8Z3',
+        '$2y$12$X94B/Wo.RvINSjw3oT7kT.myY5N4ld44pjHqVhp4BJVgQJEY6efxm',
         'trésorier',
         'actif'
     );
@@ -209,7 +209,7 @@ INSERT INTO
 VALUES (
         'Secrétaire',
         'secretary@maloty.com',
-        '$2y$10$cVPR3fCdMGhFqEw4t8Z5Se2Z8v8Z8v8Z8v8Z8v8Z8v8Z8v8Z8v8Z4',
+        '$2y$12$o7V7U/0x7vk7jlQCm8lZeuZY/dJlyp7d2j.EOnbZAHU4GWLT7ihn6',
         'secrétaire',
         'actif'
     );

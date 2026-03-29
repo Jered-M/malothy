@@ -10,6 +10,36 @@ class APIClient {
         this.token = localStorage.getItem('token');
     }
 
+    isPublicAuthEndpoint(endpoint) {
+        return endpoint === '/auth/login';
+    }
+
+    clearSession() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        this.token = null;
+
+        if (window.app) {
+            window.app.currentUser = null;
+        }
+    }
+
+    persistSession(user, token) {
+        this.token = token || null;
+
+        if (token) {
+            localStorage.setItem('token', token);
+        } else {
+            localStorage.removeItem('token');
+        }
+
+        if (user) {
+            localStorage.setItem('user', JSON.stringify(user));
+        } else {
+            localStorage.removeItem('user');
+        }
+    }
+
     /**
      * Faire une requête HTTP
      */
@@ -22,60 +52,59 @@ class APIClient {
             credentials: 'include'
         };
 
-        if (this.token) {
+        if (this.token && !this.isPublicAuthEndpoint(endpoint)) {
             options.headers['Authorization'] = `Bearer ${this.token}`;
         }
 
         if (data && (method === 'POST' || method === 'PUT')) {
             if (data instanceof FormData) {
                 options.body = data;
-                // Delete Content-Type to let fetch set the boundary automatically
                 delete options.headers['Content-Type'];
             } else {
                 options.body = JSON.stringify(data);
             }
         }
 
-        try {
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-            
-            if (response.status === 401) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                if (window.app) {
-                    window.app.currentUser = null;
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+        const contentType = response.headers.get('content-type') || '';
+        const result = contentType.includes('application/json')
+            ? await response.json()
+            : null;
+
+        if (response.status === 401) {
+            const message = result?.error || 'Non authentifié';
+
+            if (!this.isPublicAuthEndpoint(endpoint)) {
+                this.clearSession();
+
+                if (window.app && window.app.currentPage !== 'login') {
                     window.app.navigate('login');
                 }
-                throw new Error('Non authentifié');
             }
 
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.error || 'Erreur API');
-            }
-
-            return result;
-        } catch (error) {
-            console.error('API Error:', error);
-            throw error;
+            throw new Error(message);
         }
+
+        if (!response.ok) {
+            throw new Error(result?.error || `Erreur API (${response.status})`);
+        }
+
+        return result;
     }
 
     // ============ AUTH ============
     async loginWith(email, password) {
         const result = await this.request('POST', '/auth/login', { email, password });
-        this.token = result.token;
-        localStorage.setItem('token', this.token);
-        localStorage.setItem('user', JSON.stringify(result.user));
+        this.persistSession(result.user, result.token);
         return result;
     }
 
     async logout() {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        this.token = null;
-        return await this.request('POST', '/auth/logout');
+        try {
+            return await this.request('POST', '/auth/logout');
+        } finally {
+            this.clearSession();
+        }
     }
 
     async getProfile() {

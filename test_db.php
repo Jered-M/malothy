@@ -25,11 +25,18 @@ try {
 
     if ($user) {
         $verify = password_verify($password, $user['password']);
+        
+        // TEST BRUT SANS LA BASE (pour comparer)
+        $test_hash = password_hash('admin123', PASSWORD_BCRYPT);
+        $test_verify = password_verify('admin123', $user['password']);
+
         echo json_encode([
             'user_found' => true,
             'user_status' => $user['status'],
-            'password_match' => $verify,
-            'hash_in_db' => $user['password']
+            'password_match_from_db' => $verify,
+            'password_match_test_brute' => $test_verify,
+            'hash_in_db' => $user['password'],
+            'new_valid_hash_from_server' => $test_hash
         ], JSON_PRETTY_PRINT);
     } else {
         echo json_encode(['user_found' => false, 'error' => 'Utilisateur non trouvé dans la table users'], JSON_PRETTY_PRINT);

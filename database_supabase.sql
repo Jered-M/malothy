@@ -113,7 +113,7 @@ CREATE TABLE settings (
 
 -- DONNÉES INITIALES (Exemple)
 INSERT INTO users (name, email, password, role, status)
-VALUES ('Administrateur', 'admin@maloty.com', '$2y$10$aUPR3fCdMGhFqEw4t8Z5Se2Z8v8Z8v8Z8v8Z8v8Z8v8Z8v8Z8v8Z2', 'admin', 'actif');
+VALUES ('Administrateur', 'admin@maloty.com', '$2y$12$5RRkMsNu7e1Sx8fxFUM/i.5tPT6mv2D97UWiCpEXlJB5xRqYYy7j.', 'admin', 'actif');
 
 INSERT INTO users (name, email, password, role, status)
-VALUES ('Trésorier', 'treasure@maloty.com', '$2y$10$bVPR3fCdMGhFqEw4t8Z5Se2Z8v8Z8v8Z8v8Z8v8Z8v8Z8v8Z8v8Z3', 'trésorier', 'actif');
+VALUES ('Trésorier', 'treasure@maloty.com', '$2y$12$X94B/Wo.RvINSjw3oT7kT.myY5N4ld44pjHqVhp4BJVgQJEY6efxm', 'trésorier', 'actif');
