@@ -65,6 +65,7 @@ if ($path === 'debug') {
         ]
     ]);
 }
+$segments = explode('/', $path);
 $resourceName = ucfirst(strtolower($segments[0]));
 $controllerFile = PROJECT_ROOT . "/backend/api/controllers/{$resourceName}Controller.php";
 
