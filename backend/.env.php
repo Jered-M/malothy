@@ -58,8 +58,13 @@ if (!defined('DB_PORT')) {
 defineFromEnv('APP_NAME', 'MALOTY - Gestion d\'Église');
 
 // APP_URL Dynamique (Essentiel pour les redirections MaishaPay sur Render/Heroku)
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$protocol = 'http://';
+if ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || 
+    ($_SERVER['SERVER_PORT'] == 443) ||
+    (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) {
+    $protocol = "https://";
+}
+$host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
 $currentUrl = $protocol . $host;
 defineFromEnv('APP_URL', $currentUrl);
 

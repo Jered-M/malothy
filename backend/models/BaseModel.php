@@ -83,7 +83,9 @@ abstract class BaseModel {
         
         if ($stmt->execute(array_values($data))) {
             $lastId = $this->db->lastInsertId();
-            $this->logAction('CREATE', $lastId, 'Nouvel enregistrement créé');
+            // Pour PostgreSQL, lastInsertId peut nécessiter une séquence, mais si on utilise SERIAL c'est souvent automatique.
+            // On s'assure juste que si ça échoue, on continue quand même pour le log si recordId est nul.
+            $this->logAction('CREATE', $lastId ?: null, 'Nouvel enregistrement créé');
             return $lastId;
         }
         return false;
