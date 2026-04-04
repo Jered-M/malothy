@@ -42,7 +42,29 @@ if (empty($path)) {
     json_error('Aucune ressource spécifiée', 400);
 }
 
-$segments = explode('/', $path);
+// Route de diagnostic
+if ($path === 'debug') {
+    $db_status = 'Inconnu';
+    try {
+        $db = Database::getInstance()->getConnection();
+        $db_status = 'Connecté (' . $db->getAttribute(PDO::ATTR_DRIVER_NAME) . ')';
+    } catch (Exception $e) {
+        $db_status = 'Erreur: ' . $e->getMessage();
+    }
+    
+    json_response([
+        'status' => 'online',
+        'php_version' => PHP_VERSION,
+        'db_status' => $db_status,
+        'project_root' => PROJECT_ROOT,
+        'app_url' => defined('APP_URL') ? APP_URL : 'Non défini',
+        'extensions' => [
+            'pdo_pgsql' => extension_loaded('pdo_pgsql'),
+            'pdo_mysql' => extension_loaded('pdo_mysql'),
+            'bcmath' => extension_loaded('bcmath')
+        ]
+    ]);
+}
 $resourceName = ucfirst(strtolower($segments[0]));
 $controllerFile = PROJECT_ROOT . "/backend/api/controllers/{$resourceName}Controller.php";
 
