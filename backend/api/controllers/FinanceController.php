@@ -174,46 +174,50 @@ class FinanceController {
      * Enregistrement d'une dîme par un membre (sans authentification staff)
      */
     public function public_tithe() {
-        $input = get_input();
-        $required = ['amount', 'tithe_date'];
-        
-        foreach ($required as $field) {
-            if (empty($input[$field])) {
-                json_error("Champ '{$field}' requis", 400);
+        try {
+            $input = get_input();
+            $required = ['amount', 'tithe_date'];
+            
+            foreach ($required as $field) {
+                if (empty($input[$field])) {
+                    json_error("Champ '{$field}' requis", 400);
+                }
             }
+
+            $memberId = $input['member_id'] ?? null;
+            $memberName = $input['member_name'] ?? 'Donateur Anonyme';
+
+            $data = [
+                'member_id' => $memberId,
+                'amount' => $input['amount'],
+                'currency' => $input['currency'] ?? 'CDF',
+                'tithe_date' => $input['tithe_date'],
+                'payment_status' => 'pending',
+                'comment' => "Don par: {$memberName} | " . ($input['comment'] ?? '') . ' (MaishaPay Pending)',
+                'recorded_by' => null 
+            ];
+
+            $id = $this->titheModel->recordTithe($data);
+
+            // Préparer le lien MaishaPay
+            $paymentData = $this->maishaPay->generateCheckoutLink([
+                'amount' => $data['amount'],
+                'currency' => $data['currency'],
+                'description' => "Dîme de {$memberName}",
+                'customer_name' => $memberName,
+                'success_url' => APP_URL . '/contribute?status=success&id=' . $id,
+                'cancel_url' => APP_URL . '/contribute?status=cancel'
+            ]);
+
+            json_response([
+                'success' => true,
+                'message' => 'Redirection vers le paiement...',
+                'payment_url' => $paymentData['payment_url'],
+                'id' => $id
+            ], 201);
+        } catch (Exception $e) {
+            json_error('Exception dans public_tithe: ' . $e->getMessage(), 500);
         }
-
-        $memberId = $input['member_id'] ?? null;
-        $memberName = $input['member_name'] ?? 'Donateur Anonyme';
-
-        $data = [
-            'member_id' => $memberId,
-            'amount' => $input['amount'],
-            'currency' => $input['currency'] ?? 'CDF',
-            'tithe_date' => $input['tithe_date'],
-            'payment_status' => 'pending',
-            'comment' => "Don par: {$memberName} | " . ($input['comment'] ?? '') . ' (MaishaPay Pending)',
-            'recorded_by' => null 
-        ];
-
-        $id = $this->titheModel->recordTithe($data);
-
-        // Préparer le lien MaishaPay
-        $paymentData = $this->maishaPay->generateCheckoutLink([
-            'amount' => $data['amount'],
-            'currency' => $data['currency'],
-            'description' => "Dîme de {$memberName}",
-            'customer_name' => $memberName,
-            'success_url' => APP_URL . '/contribute?status=success&id=' . $id,
-            'cancel_url' => APP_URL . '/contribute?status=cancel'
-        ]);
-
-        json_response([
-            'success' => true,
-            'message' => 'Redirection vers le paiement...',
-            'payment_url' => $paymentData['payment_url'],
-            'id' => $id
-        ], 201);
     }
 
     /**
@@ -221,45 +225,49 @@ class FinanceController {
      * Enregistrement d'une offrande par un membre (sans authentification staff)
      */
     public function public_offering() {
-        $input = get_input();
-        $required = ['type', 'amount', 'offering_date'];
-        
-        foreach ($required as $field) {
-            if (empty($input[$field])) {
-                json_error("Champ '{$field}' requis", 400);
+        try {
+            $input = get_input();
+            $required = ['type', 'amount', 'offering_date'];
+            
+            foreach ($required as $field) {
+                if (empty($input[$field])) {
+                    json_error("Champ '{$field}' requis", 400);
+                }
             }
+
+            $memberName = $input['member_name'] ?? 'Donateur Anonyme';
+
+            $data = [
+                'type' => $input['type'],
+                // Pas de member_id ici car la table offerings ne possède pas cette colonne dans le schéma actuel
+                'amount' => $input['amount'],
+                'currency' => $input['currency'] ?? 'CDF',
+                'offering_date' => $input['offering_date'],
+                'payment_status' => 'pending',
+                'description' => ($input['description'] ?? "Don de {$memberName}") . ' (MaishaPay Pending)',
+                'recorded_by' => null // Public
+            ];
+
+            $id = $this->offeringModel->recordOffering($data);
+
+            // Préparer le lien MaishaPay
+            $paymentData = $this->maishaPay->generateCheckoutLink([
+                'amount' => $data['amount'],
+                'currency' => $data['currency'],
+                'description' => "Offrande de {$memberName}",
+                'customer_name' => $memberName,
+                'success_url' => APP_URL . '/contribute?status=success&id=' . $id,
+                'cancel_url' => APP_URL . '/contribute?status=cancel'
+            ]);
+
+            json_response([
+                'success' => true,
+                'message' => 'Redirection vers le paiement...',
+                'payment_url' => $paymentData['payment_url'],
+                'id' => $id
+            ], 201);
+        } catch (Exception $e) {
+            json_error('Exception dans public_offering: ' . $e->getMessage(), 500);
         }
-
-        $memberName = $input['member_name'] ?? 'Donateur Anonyme';
-
-        $data = [
-            'type' => $input['type'],
-            // Pas de member_id ici car la table offerings ne possède pas cette colonne dans le schéma actuel
-            'amount' => $input['amount'],
-            'currency' => $input['currency'] ?? 'CDF',
-            'offering_date' => $input['offering_date'],
-            'payment_status' => 'pending',
-            'description' => ($input['description'] ?? "Don de {$memberName}") . ' (MaishaPay Pending)',
-            'recorded_by' => null // Public
-        ];
-
-        $id = $this->offeringModel->recordOffering($data);
-
-        // Préparer le lien MaishaPay
-        $paymentData = $this->maishaPay->generateCheckoutLink([
-            'amount' => $data['amount'],
-            'currency' => $data['currency'],
-            'description' => "Offrande de {$memberName}",
-            'customer_name' => $memberName,
-            'success_url' => APP_URL . '/contribute?status=success&id=' . $id,
-            'cancel_url' => APP_URL . '/contribute?status=cancel'
-        ]);
-
-        json_response([
-            'success' => true,
-            'message' => 'Redirection vers le paiement...',
-            'payment_url' => $paymentData['payment_url'],
-            'id' => $id
-        ], 201);
     }
 }

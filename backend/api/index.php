@@ -3,9 +3,12 @@
  * API Backend Router - RESTful
  */
 
-// Global Error Handlers
+// Global Error Handlers (Improved with logging)
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
     if (!(error_reporting() & $errno)) return false;
+    $logMsg = date('[Y-m-d H:i:s]') . " Error [$errno]: $errstr in $errfile on line $errline \n";
+    @file_put_contents(PROJECT_ROOT . '/backend/error_debug.log', $logMsg, FILE_APPEND);
+    
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['error' => $errstr, 'file' => basename($errfile), 'line' => $errline]);
@@ -13,6 +16,9 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 });
 
 set_exception_handler(function($exception) {
+    $logMsg = date('[Y-m-d H:i:s]') . " Exception: " . $exception->getMessage() . " in " . $exception->getFile() . " on line " . $exception->getLine() . " \n";
+    @file_put_contents(PROJECT_ROOT . '/backend/error_debug.log', $logMsg, FILE_APPEND);
+    
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['error' => $exception->getMessage()]);
