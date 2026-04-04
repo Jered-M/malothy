@@ -24,6 +24,8 @@ $spaRoutes = [
     'reports',
     'settings',
     'audit-logs',
+    'contribute',
+    'home',
 ];
 
 // Requête API

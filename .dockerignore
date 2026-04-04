@@ -10,7 +10,7 @@ php-error.log
 desktop.ini
 Thumbs.db
 node_modules/
-.docker-ignore
+.dockerignore
 Dockerfile
 docker-compose.yml
 backup_*.json
@@ -19,3 +19,13 @@ check_col.php
 fix_user_roles.php
 test-api-endpoint.php
 list_users_debug.php
+.gemini/
+.idea/
+.vscode/
+*.sql
+*.ps1
+!database_supabase.sql
+uploads/members/*
+uploads/expenses/*
+!uploads/members/.gitkeep
+!uploads/expenses/.gitkeep

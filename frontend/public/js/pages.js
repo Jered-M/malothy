@@ -1,4 +1,4 @@
-﻿class Pages {
+class Pages {
     static getCurrentUser() {
         return UI.getCurrentUser();
     }
@@ -27,6 +27,20 @@
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
         }).format(this.toNumber(amount));
+    }
+
+    static formatMoneyUSD(amount) {
+        return new Intl.NumberFormat('fr-FR', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(this.toNumber(amount));
+    }
+
+    static convertToUSD(amount) {
+        const rate = window.APP_EXCHANGE_RATE_CDF_USD || 2800;
+        return this.toNumber(amount) / rate;
     }
 
     static formatDate(value, options = { day: '2-digit', month: 'short', year: 'numeric' }) {
@@ -212,6 +226,14 @@
                             </button>
                         </form>
 
+                        <div class="text-center pt-4">
+                            <p class="text-sm font-medium text-slate-500 mb-2">Vous êtes un membre ?</p>
+                            <a href="/contribute" data-page="contribute" class="inline-flex items-center gap-2 text-brand-600 hover:text-brand-700 font-black transition-all hover:translate-x-1">
+                                <span>Faire un don ou payer ma dîme</span>
+                                <i class="fas fa-hand-holding-heart"></i>
+                            </a>
+                        </div>
+
                         <div class="p-6 rounded-3xl bg-slate-50 border border-slate-100">
                             <div class="flex gap-4">
                                 <div class="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center flex-shrink-0">
@@ -234,11 +256,18 @@
             const user = this.getCurrentUser();
             const data = await api.getDashboard();
             const stats = data.stats || {};
+            const chartData = data.chartData || {};
+            if (window.app) {
+                window.app.dashboardChartData = chartData;
+            }
+
             const totalIncome = this.toNumber(stats.monthlyTithes) + this.toNumber(stats.monthlyOfferings);
             const monthlyExpenses = this.toNumber(stats.monthlyExpenses);
             const balance = totalIncome - monthlyExpenses;
             const expenseRate = totalIncome ? Math.round((monthlyExpenses / totalIncome) * 100) : 0;
             const displayName = user.name ? user.name.split(' ')[0] : 'équipe';
+            const activeMembers = stats.activeMembers ?? stats.totalMembers ?? 0;
+            const totalMembers = stats.totalMembers ?? activeMembers;
             const dateLabel = new Intl.DateTimeFormat('fr-FR', {
                 weekday: 'long',
                 day: 'numeric',
@@ -265,10 +294,10 @@
                     })}
 
                     <section class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-                        ${UI.statCard('Membres', stats.totalMembers || 0, 'fa-users', 'brand')}
-                        ${UI.statCard('Dîmes', this.formatMoney(stats.monthlyTithes || 0), 'fa-hand-holding-heart', 'emerald')}
-                        ${UI.statCard('Offrandes', this.formatMoney(stats.monthlyOfferings || 0), 'fa-donate', 'brand')}
-                        ${UI.statCard('Solde', this.formatMoney(balance), 'fa-wallet', balance >= 0 ? 'emerald' : 'rose')}
+                        ${UI.statCard('Membres actifs', activeMembers, 'fa-users', 'brand', `Total: ${totalMembers}`)}
+                        ${UI.statCard('Dîmes du mois', this.formatMoney(stats.monthlyTithes || 0), 'fa-hand-holding-heart', 'emerald')}
+                        ${UI.statCard('Offrandes du mois', this.formatMoney(stats.monthlyOfferings || 0), 'fa-donate', 'brand')}
+                        ${UI.statCard('Solde actuel', this.formatMoney(balance), 'fa-wallet', balance >= 0 ? 'emerald' : 'rose')}
                     </section>
 
                     <section class="flex flex-col gap-8">
@@ -282,14 +311,17 @@
                                 <div class="summary-row">
                                     <strong>Recettes</strong>
                                     <b>${this.formatMoney(totalIncome)}</b>
+                                    <span>${this.formatMoneyUSD(this.convertToUSD(totalIncome))}</span>
                                 </div>
                                 <div class="summary-row">
                                     <strong>Dépenses</strong>
                                     <b>${this.formatMoney(monthlyExpenses)}</b>
+                                    <span>${this.formatMoneyUSD(this.convertToUSD(monthlyExpenses))}</span>
                                 </div>
                                 <div class="summary-row">
                                     <strong>Utilisation</strong>
                                     <b>${expenseRate}%</b>
+                                    <span>${this.formatMoneyUSD(this.convertToUSD(balance))}</span>
                                 </div>
                             </div>
                         </div>
@@ -315,6 +347,27 @@
             const activeCount = members.filter((member) => UI.normalizeText(member.status) === 'actif').length;
             const departmentCount = new Set(members.map((member) => member.department).filter(Boolean)).size;
             const contactCount = members.filter((member) => member.phone || member.email).length;
+            const departments = Array.from(
+                new Set(members.map((member) => member.department).filter(Boolean))
+            ).sort((a, b) => a.localeCompare(b, 'fr'));
+
+            const emailCounts = members.reduce((acc, member) => {
+                const key = (member.email || '').trim().toLowerCase();
+                if (key) acc[key] = (acc[key] || 0) + 1;
+                return acc;
+            }, {});
+
+            const phoneCounts = members.reduce((acc, member) => {
+                const key = (member.phone || '').trim();
+                if (key) acc[key] = (acc[key] || 0) + 1;
+                return acc;
+            }, {});
+
+            const duplicateCount = members.filter((member) => {
+                const emailKey = (member.email || '').trim().toLowerCase();
+                const phoneKey = (member.phone || '').trim();
+                return (emailKey && emailCounts[emailKey] > 1) || (phoneKey && phoneCounts[phoneKey] > 1);
+            }).length;
 
             return UI.shell(
                 'members',
@@ -337,6 +390,47 @@
                         ${UI.statCard('Départements', departmentCount || 0, 'fa-sitemap', 'amber', `${contactCount} fiches avec contact`)}
                     </section>
 
+                    ${duplicateCount ? `
+                        <section class="surface-panel border border-amber-200 bg-amber-50/60">
+                            <div class="flex items-center justify-between gap-4">
+                                <div>
+                                    <p class="text-sm font-black text-amber-900">Doublons détectés</p>
+                                    <p class="text-xs text-amber-800 font-medium">Certaines fiches partagent le même email ou téléphone. Corrigez-les avant la soutenance.</p>
+                                </div>
+                                ${UI.badge(`${duplicateCount} fiche(s)`, 'amber')}
+                            </div>
+                        </section>
+                    ` : ''}
+
+                    <section class="surface-panel p-6 md:p-8">
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                            <div>
+                                <label class="field-label" for="membersSearch">Recherche</label>
+                                <input id="membersSearch" type="text" class="pro-input" placeholder="Nom, email, téléphone, département">
+                            </div>
+                            <div>
+                                <label class="field-label" for="membersDepartmentFilter">Département</label>
+                                <select id="membersDepartmentFilter" class="pro-select">
+                                    <option value="">Tous les départements</option>
+                                    ${departments.map((dept) => `<option value="${dept}">${dept}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="field-label" for="membersDateFilter">Date d'adhésion</label>
+                                <input id="membersDateFilter" type="date" class="pro-input">
+                            </div>
+                            <div>
+                                <label class="field-label" for="membersStatusFilter">Statut</label>
+                                <select id="membersStatusFilter" class="pro-select">
+                                    <option value="">Tous les statuts</option>
+                                    <option value="actif">Actif</option>
+                                    <option value="inactif">Inactif</option>
+                                    <option value="suspendu">Suspendu</option>
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+
                     ${
                         members.length
                             ? `
@@ -346,7 +440,7 @@
                                             <h2 class="table-title">Liste des membres</h2>
                                             <p class="table-subtitle">Registre complet des membres et informations de contact.</p>
                                         </div>
-                                        ${UI.badge(`${members.length} enregistrements`, 'brand')}
+                                        <span id="membersCountBadge" class="badge badge-brand">${members.length} enregistrements</span>
                                     </div>
 
                                     <div class="pro-table-wrap">
@@ -355,32 +449,50 @@
                                                 <tr>
                                                     <th>Membre</th>
                                                     <th>Département</th>
-                                                    <th>Contact</th>
+                                                    <th>Téléphone</th>
+                                                    <th>Email</th>
                                                     <th>Statut</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 ${members
                                                     .map(
-                                                        (member) => `
-                                                            <tr>
+                                                        (member) => {
+                                                            const emailKey = (member.email || '').trim().toLowerCase();
+                                                            const phoneKey = (member.phone || '').trim();
+                                                            const isDuplicate = (emailKey && emailCounts[emailKey] > 1) || (phoneKey && phoneCounts[phoneKey] > 1);
+                                                            const departmentLabel = member.department || 'Général';
+                                                            const duplicateBadge = isDuplicate ? UI.badge('Doublon', 'amber') : '';
+
+                                                            return `
+                                                            <tr data-member-row="1"
+                                                                data-name="${this.fullName(member)}"
+                                                                data-email="${member.email || ''}"
+                                                                data-phone="${member.phone || ''}"
+                                                                data-department="${departmentLabel}"
+                                                                data-status="${member.status || 'actif'}"
+                                                                data-join-date="${member.join_date || ''}">
                                                                 <td>
                                                                     <div class="table-user">
                                                                         <div class="table-avatar">${UI.initials(member.first_name, member.last_name)}</div>
                                                                         <div>
                                                                             <p class="table-name">${this.fullName(member)}</p>
                                                                             <p class="table-muted">${member.email || 'Email non renseigné'}</p>
+                                                                            ${duplicateBadge}
                                                                         </div>
                                                                     </div>
                                                                 </td>
-                                                                <td>${member.department ? UI.badge(member.department, 'slate') : UI.badge('Général', 'slate')}</td>
+                                                                <td>${UI.badge(departmentLabel, 'slate')}</td>
                                                                 <td>
                                                                     <p class="table-name">${member.phone || 'Aucun téléphone'}</p>
-                                                                    <p class="table-muted">${member.email || 'Adresse email absente'}</p>
+                                                                </td>
+                                                                <td>
+                                                                    <p class="table-name">${member.email || 'Adresse email absente'}</p>
                                                                 </td>
                                                                 <td>${UI.statusBadge(member.status || 'actif')}</td>
                                                             </tr>
-                                                        `
+                                                        `;
+                                                        }
                                                     )
                                                     .join('')}
                                             </tbody>
@@ -1125,6 +1237,7 @@
                                     <option value="culte">Culte</option>
                                     <option value="evenement">Événement</option>
                                     <option value="mission">Mission</option>
+                                    <option value="cotisation">Cotisation</option>
                                     <option value="autre">Autre</option>
                                 </select>
                             </div>
@@ -1166,6 +1279,13 @@
                                     <span>Actions ponctuelles, conférences, levées spéciales.</span>
                                 </div>
                                 <b>evenement</b>
+                            </div>
+                            <div class="summary-row">
+                                <div>
+                                    <strong>Cotisation</strong>
+                                    <span>Contributions régulières ou campagnes internes.</span>
+                                </div>
+                                <b>cotisation</b>
                             </div>
                             <div class="summary-row">
                                 <div>
@@ -1425,6 +1545,588 @@
         } catch (error) {
             return UI.error(error.message);
         }
+    }
+
+    static async memberContributionPage() {
+        let members = [];
+        try {
+            const membersResult = await api.getPublicMembers();
+            members = membersResult.data || [];
+        } catch (error) {
+            console.warn("Using mock members as fallback (database error):", error.message);
+            members = [
+                { id: 1, name: "Membre Démo 1" },
+                { id: 2, name: "Membre Démo 2" },
+                { id: 3, name: "Visiteur" }
+            ];
+        }
+
+        try {
+            return `
+                <div class="min-h-screen bg-[#fcfdfe] flex items-center justify-center p-0 md:p-8 lg:p-12 selection:bg-brand-100 selection:text-brand-900">
+                    <!-- Conteneur Principal Split-Screen -->
+                    <div class="w-full max-w-[1200px] h-full md:h-auto min-h-[700px] bg-white md:rounded-[40px] shadow-[0_40px_100px_-20px_rgba(15,23,42,0.1)] overflow-hidden flex flex-col md:flex-row relative border border-slate-100/50">
+                        
+                        <!-- Côté Gauche: Visuel & Message -->
+                        <div class="w-full md:w-[42%] bg-brand-600 relative overflow-hidden flex flex-col justify-end p-12 text-white">
+                            <!-- Image de Fond -->
+                            <img src="https://images.unsplash.com/photo-1438232992991-995b7058bbb3?auto=format&fit=crop&q=80" class="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay scale-110 animate-pulse-slow">
+                            
+                            <!-- Overlays de Dégradé -->
+                            <div class="absolute inset-0 bg-gradient-to-t from-brand-900/90 via-brand-900/40 to-transparent"></div>
+                            
+                            <!-- Contenu flottant -->
+                            <div class="relative z-10 space-y-6">
+                                <div class="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20">
+                                    <i class="fas fa-hand-holding-heart text-white/90"></i>
+                                    <span class="text-[10px] font-black uppercase tracking-[2px]">Espace Sécurisé</span>
+                                </div>
+                                <h1 class="text-4xl lg:text-5xl font-black leading-[1.1] tracking-tighter">
+                                    Soutenir <br>notre <span class="italic text-brand-100">vision</span>.
+                                </h1>
+                                <p class="text-brand-100/80 text-lg font-medium max-w-sm">
+                                    Chaque geste compte. Votre générosité permet d'étendre nos missions et de servir notre communauté.
+                                </p>
+                                
+                                <div class="pt-8 flex flex-col gap-4">
+                                    <div class="flex items-center gap-4 group">
+                                        <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center group-hover:bg-brand-400 transition-colors">
+                                            <i class="fas fa-check text-xs text-brand-100"></i>
+                                        </div>
+                                        <span class="text-sm font-bold">Paiement 100% Sécurisé</span>
+                                    </div>
+                                    <div class="flex items-center gap-4 group">
+                                        <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center group-hover:bg-brand-400 transition-colors">
+                                            <i class="fas fa-shield-alt text-xs text-brand-100"></i>
+                                        </div>
+                                        <span class="text-sm font-bold">Don déductible d'impôts</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Côté Droit: Formulaire -->
+                        <div class="flex-1 bg-white p-8 md:p-14 lg:p-16 overflow-y-auto">
+                            <!-- Entête Form -->
+                            <div class="flex items-center justify-between mb-12">
+                                <a href="/" data-page="home" class="group flex items-center gap-2 text-slate-400 hover:text-brand-600 transition-all font-black text-xs uppercase tracking-widest">
+                                    <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i>
+                                    <span>Retour</span>
+                                </a>
+                                <div class="text-right">
+                                    <span class="block text-[10px] font-black text-slate-300 uppercase tracking-widest">Étape 1 de 1</span>
+                                </div>
+                            </div>
+
+                            <div id="contributionSuccess" class="hidden mb-12 p-8 bg-emerald-50 border border-emerald-100 rounded-[30px] flex items-center gap-6 animate-in slide-in-from-top duration-700">
+                                <div class="w-16 h-16 rounded-3xl bg-emerald-500 text-white flex items-center justify-center text-3xl shadow-xl shadow-emerald-200">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-emerald-900 font-black text-xl mb-1">Merci précieusement !</h3>
+                                    <p class="text-emerald-700 font-medium">Votre contribution a été enregistrée. Dieu vous bénisse.</p>
+                                </div>
+                            </div>
+
+                            <form id="publicContributionForm" class="space-y-10 max-w-xl mx-auto md:mx-0">
+                                <!-- Type de Contribution (Toggle Premium) -->
+                                <div class="space-y-4">
+                                    <label class="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
+                                        Que souhaitez-vous faire ?
+                                    </label>
+                                    <div class="grid grid-cols-3 gap-4">
+                                        <label class="contribution-card-premium relative group cursor-pointer">
+                                            <input type="radio" name="contribution_type" value="tithe" class="peer hidden" checked>
+                                            <div class="card-body-premium peer-checked:bg-brand-600 peer-checked:text-white peer-checked:border-brand-600 peer-checked:shadow-2xl peer-checked:shadow-brand-200">
+                                                <i class="fas fa-church text-2xl mb-4 group-hover:scale-110 transition-transform"></i>
+                                                <span class="block font-black text-xs uppercase">Dîme</span>
+                                            </div>
+                                        </label>
+                                        <label class="contribution-card-premium relative group cursor-pointer">
+                                            <input type="radio" name="contribution_type" value="offering" class="peer hidden">
+                                            <div class="card-body-premium peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:border-emerald-600 peer-checked:shadow-2xl peer-checked:shadow-emerald-200">
+                                                <i class="fas fa-heart text-2xl mb-4 group-hover:scale-110 transition-transform"></i>
+                                                <span class="block font-black text-xs uppercase">Offrande</span>
+                                            </div>
+                                        </label>
+                                        <label class="contribution-card-premium relative group cursor-pointer">
+                                            <input type="radio" name="contribution_type" value="deposit" class="peer hidden">
+                                            <div class="card-body-premium peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 peer-checked:shadow-2xl peer-checked:shadow-blue-200">
+                                                <i class="fas fa-wallet text-2xl mb-4 group-hover:scale-110 transition-transform"></i>
+                                                <span class="block font-black text-xs uppercase">Dépôt</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Informations Donateur -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div id="memberSelectRow" class="space-y-3">
+                                        <label class="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">Sélectionnez votre nom</label>
+                                        <div class="group relative">
+                                            <i class="fas fa-user-circle absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-500 transition-colors z-10"></i>
+                                            <select name="member_id" class="premium-input appearance-none cursor-pointer" required>
+                                                <option value="">-- Choisir mon nom --</option>
+                                                ${members
+                                                    .map(
+                                                        (m) => `
+                                                    <option value="${m.id}">${m.name}</option>
+                                                `
+                                                    )
+                                                    .join('')}
+                                                <option value="new">Autre (Saisir mon nom)</option>
+                                            </select>
+                                            <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                                        </div>
+                                    </div>
+
+                                    <div id="manualNameRow" class="space-y-3 hidden animate-in slide-in-from-top duration-300">
+                                        <label class="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">Votre Nom Complet</label>
+                                        <div class="group relative">
+                                            <i class="fas fa-user absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-500 transition-colors"></i>
+                                            <input type="text" name="member_name" class="premium-input" placeholder="Ex: Jean Mukendi">
+                                        </div>
+                                    </div>
+
+                                    <div class="space-y-3">
+                                        <label class="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">Date du don</label>
+                                        <div class="group relative">
+                                            <i class="fas fa-calendar absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-500 transition-colors"></i>
+                                            <input type="date" name="date" class="premium-input" value="${this.today()}" required>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Options Offrande (Masqué par défaut) -->
+                                <div id="offeringTypeRow" class="space-y-3 hidden animate-in slide-in-from-left duration-300">
+                                    <label class="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">Catégorie d'offrande</label>
+                                    <div class="group relative">
+                                        <i class="fas fa-tag absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors"></i>
+                                        <select name="type" class="premium-input appearance-none cursor-pointer">
+                                            <option value="culte">Culte de louange</option>
+                                            <option value="evenement">Événement Spécial</option>
+                                            <option value="mission">Soutien aux Missions</option>
+                                            <option value="cotisation">Cotisation</option>
+                                            <option value="autre">Action de grâce</option>
+                                        </select>
+                                        <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                                    </div>
+                                </div>
+
+                                <!-- Montant (L'élément central) -->
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between px-1">
+                                        <label class="text-[11px] font-black uppercase tracking-widest text-slate-400">Montant de la contribution</label>
+                                        
+                                        <!-- Sélecteur de Devise Premium -->
+                                        <div class="currency-toggle-container bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200/50">
+                                            <label class="currency-option">
+                                                <input type="radio" name="currency" value="CDF" class="hidden" checked>
+                                                <span class="currency-label">CDF</span>
+                                            </label>
+                                            <label class="currency-option">
+                                                <input type="radio" name="currency" value="USD" class="hidden">
+                                                <span class="currency-label">USD</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="relative group">
+                                        <div class="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+                                            <span id="currencyPrefix" class="text-brand-600 font-black text-2xl transition-all">FC</span>
+                                            <div class="w-px h-8 bg-slate-100 group-focus-within:bg-brand-200 mx-2"></div>
+                                        </div>
+                                        <input 
+                                            type="number" 
+                                            name="amount" 
+                                            class="w-full bg-slate-50 border-2 border-slate-50 rounded-[24px] py-10 pl-24 pr-8 text-4xl font-black text-slate-900 group-focus-within:bg-white group-focus-within:border-brand-500 group-focus-within:ring-8 group-focus-within:ring-brand-500/5 transition-all outline-none placeholder:text-slate-200"
+                                            placeholder="000" 
+                                            required
+                                        >
+                                    </div>
+                                </div>
+
+                                <!-- Commentaire -->
+                                <div class="space-y-3">
+                                    <label class="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">Note de bénédiction (Optionnel)</label>
+                                    <textarea name="comment" class="premium-input min-h-[120px] pt-4 resize-none" placeholder="Partagez un message ou une intention..."></textarea>
+                                </div>
+
+                                <!-- Bouton Submit -->
+                                <div class="pt-6 space-y-6">
+                                    <button type="submit" class="cta-button w-full bg-slate-950 text-white rounded-[24px] py-6 font-black text-lg flex items-center justify-center gap-4 shadow-2xl shadow-slate-200 hover:-translate-y-1 active:scale-[0.98] transition-all">
+                                        <span>Confirmer & Payer</span>
+                                        <i class="fas fa-paper-plane text-brand-400"></i>
+                                    </button>
+                                    
+                                    <!-- Badges de Paiement -->
+                                    <div class="flex flex-col items-center gap-4 pt-2">
+                                        <div class="flex items-center gap-6 opacity-40 grayscale hover:grayscale-0 transition-all duration-500">
+                                            <span class="text-[10px] font-black tracking-widest text-slate-400">MOBILE MONEY</span>
+                                            <div class="flex items-center gap-4">
+                                                <i class="fab fa-cc-visa text-xl"></i>
+                                                <i class="fab fa-cc-mastercard text-xl"></i>
+                                                <span class="font-black text-xs">M-PESA / AIRTEL / ORANGE</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-full">
+                                            <i class="fas fa-lock text-[10px] text-emerald-500"></i>
+                                            <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Secured via <span class="text-slate-900">MaishaPay</span></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <style>
+                    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');
+                    
+                    #app { font-family: 'Montserrat', sans-serif; }
+
+                    .premium-input {
+                        width: 100%;
+                        background-color: #f8fafc;
+                        border: 2px solid #f8fafc;
+                        border-radius: 20px;
+                        padding: 18px 24px 18px 60px;
+                        font-weight: 700;
+                        color: #0f172a;
+                        transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+                        font-size: 0.95rem;
+                        outline: none;
+                    }
+                    .premium-input:focus {
+                        background-color: white;
+                        border-color: #0c87eb;
+                        box-shadow: 0 10px 25px -5px rgba(12, 135, 235, 0.1);
+                    }
+                    .premium-input::placeholder { color: #cbd5e1; }
+
+                    .card-body-premium {
+                        padding: 24px;
+                        background-color: #f8fafc;
+                        border: 2px solid #f1f5f9;
+                        border-radius: 28px;
+                        transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+                        color: #64748b;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        text-align: center;
+                    }
+                    .contribution-card-premium:hover .card-body-premium {
+                        border-color: #cbd5e1;
+                        background-color: #f1f5f9;
+                        transform: translateY(-4px);
+                    }
+
+                    .currency-toggle-container {
+                        width: auto;
+                        display: flex;
+                        background: #f1f5f9;
+                    }
+                    .currency-option {
+                        cursor: pointer;
+                    }
+                    .currency-label {
+                        display: block;
+                        padding: 8px 16px;
+                        border-radius: 12px;
+                        font-size: 10px;
+                        font-weight: 900;
+                        color: #94a3b8;
+                        transition: all 0.3s;
+                        text-transform: uppercase;
+                    }
+                    .currency-option input:checked + .currency-label {
+                        background: white;
+                        color: #0c87eb;
+                        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+                    }
+
+                    .animate-pulse-slow {
+                        animation: pulse-slow 12s infinite ease-in-out;
+                    }
+                    @keyframes pulse-slow {
+                        0%, 100% { transform: scale(1); }
+                        50% { transform: scale(1.08); }
+                    }
+
+                    .cta-button {
+                        background: radial-gradient(circle at top left, #1e293b, #020617);
+                    }
+                </style>
+            `;
+        } catch (error) {
+            console.error("Critical render error in contribution page:", error);
+            return UI.error("Erreur de rendu de la page. " + error.message);
+        }
+    }
+
+    static async homePage() {
+        return `
+            <div class="min-h-screen bg-white">
+                <!-- Navigation Fixe -->
+                <nav class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 py-3">
+                    <div class="max-w-7xl mx-auto flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white text-base shadow-lg shadow-brand-200">
+                                <i class="fas fa-church"></i>
+                            </div>
+                            <span class="text-xl font-black text-slate-950 tracking-tighter uppercase">MALOTY</span>
+                        </div>
+                        
+                        <!-- Menu Desktop -->
+                        <div class="hidden md:flex items-center gap-8">
+                            <a href="#hero" class="nav-link active">Accueil</a>
+                            <a href="#services" class="nav-link">Ce que nous faisons</a>
+                            <a href="#events" class="nav-link">Événements</a>
+                            <a href="#contact" class="nav-link">Contact</a>
+                            <a href="/contribute" data-page="contribute" class="btn-primary-sm bg-emerald-600 hover:bg-emerald-700">
+                                <i class="fas fa-hand-holding-heart mr-2"></i>Offrande
+                            </a>
+                            <a href="/login" data-page="login" class="text-slate-400 hover:text-slate-800 transition-colors">
+                                <i class="fas fa-user-circle text-2xl"></i>
+                            </a>
+                        </div>
+
+                        <!-- Menu Mobile Toggle -->
+                        <button class="md:hidden text-slate-900 text-2xl">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                    </div>
+                </nav>
+
+                <!-- Section Hero -->
+                <section id="hero" class="pt-32 pb-20 px-6 bg-slate-50 relative overflow-hidden">
+                    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                        <div class="space-y-8 animate-in slide-in-from-left duration-1000">
+                            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-50 text-brand-600 text-[11px] font-black uppercase tracking-widest border border-brand-100">
+                                Bienvenue dans notre communauté
+                            </div>
+                            <h1 class="text-6xl md:text-7xl font-black text-slate-950 leading-[0.95] tracking-tight">
+                                Venez tels que <span class="text-brand-600 italic">vous êtes.</span>
+                            </h1>
+                            <p class="text-xl text-slate-600 font-medium leading-relaxed max-w-lg">
+                                Une église moderne, vivante et ouverte à tous, au service de notre Dieu et de notre communauté locale pour une foi partagée.
+                            </p>
+                            <div class="flex flex-wrap gap-4 pt-4">
+                                <a href="/contribute" data-page="contribute" class="btn-primary py-4 px-8 text-lg bg-emerald-600 hover:bg-emerald-700 shadow-xl shadow-emerald-100">
+                                    <span>Participer à l'offrande</span>
+                                    <i class="fas fa-arrow-right"></i>
+                                </a>
+                                <a href="#events" class="btn-secondary py-4 px-8 text-lg border-2">
+                                    <span>Nos événements</span>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="relative animate-in zoom-in duration-1000 delay-300">
+                            <div class="aspect-[4/3] rounded-4xl bg-brand-600 overflow-hidden shadow-3xl transform rotate-2">
+                                <img src="https://images.unsplash.com/photo-1438232992991-995b7058bbb3?auto=format&fit=crop&q=80" class="w-full h-full object-cover opacity-80 mix-blend-overlay">
+                            </div>
+                            <div class="absolute -bottom-6 -left-6 bg-white p-6 rounded-3xl shadow-xl space-y-1 border border-slate-50">
+                                <p class="text-3xl font-black text-brand-600">8:30 <span class="text-base text-slate-400 font-bold">AM</span></p>
+                                <p class="font-bold text-slate-900 uppercase tracking-widest text-[10px]">Culte du Dimanche</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section Services -->
+                <section id="services" class="py-24 px-6">
+                    <div class="max-w-7xl mx-auto text-center mb-16 space-y-4">
+                        <p class="text-brand-600 font-black uppercase tracking-widest text-xs">Notre Mission</p>
+                        <h2 class="text-4xl md:text-5xl font-black text-slate-950 tracking-tight">Ce que nous faisons</h2>
+                    </div>
+                    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+                        ${this.serviceCard('EnseignementBiblique', 'Études Bibliques', 'Des moments de formation et de partage pour approfondir sa connaissance de la Parole.', 'fa-book-open', 'brand')}
+                        ${this.serviceCard('CommunionFraternelle', 'Vie de Communauté', 'Des groupes de prière et de communion pour se soutenir mutuellement.', 'fa-people-group', 'emerald')}
+                        ${this.serviceCard('ActionsSociales', 'Mission & Social', 'Des actions concrètes pour aider les plus démunis et partager l\'amour de Dieu.', 'fa-handshake-angle', 'amber')}
+                    </div>
+                </section>
+
+                <!-- Section Événements -->
+                <section id="events" class="py-24 px-6 bg-slate-950 text-white rounded-[4rem] mx-4">
+                    <div class="max-w-7xl mx-auto">
+                        <div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-8">
+                            <div class="space-y-4">
+                                <p class="text-blue-400 font-black uppercase tracking-widest text-xs">Agenda</p>
+                                <h2 class="text-4xl md:text-5xl font-black tracking-tight">Nos événements à venir</h2>
+                            </div>
+                            <a href="#" class="text-blue-400 hover:text-blue-300 font-bold transition-all flex items-center gap-2">
+                                Voir tout le calendrier <i class="fas fa-calendar-alt"></i>
+                            </a>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            ${this.eventCard('Conférence de Prière', '25 AVRIL 2026', 'Une journée entière dédiée à l\'intercession et à la louange.', 'https://images.unsplash.com/photo-1510563800743-aed236490d08?auto=format&fit=crop&q=80')}
+                            ${this.eventCard('Retraite des Jeunes', '12 MAI 2026', 'Weekend de ressourcement spirituel pour la nouvelle génération.', 'https://images.unsplash.com/photo-1523580494863-6f30312248f5?auto=format&fit=crop&q=80')}
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section Contribution CTA -->
+                <section class="py-32 px-6">
+                    <div class="max-w-5xl mx-auto surface-panel p-12 md:p-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-brand-600 text-white rounded-5xl text-center shadow-3xl shadow-brand-100">
+                        <div class="max-w-2xl mx-auto space-y-8">
+                            <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center text-3xl mx-auto">
+                                <i class="fas fa-donate"></i>
+                            </div>
+                            <h2 class="text-4xl md:text-5xl font-black tracking-tight leading-none">
+                                Soutenez notre mission par vos dons.
+                            </h2>
+                            <p class="text-lg text-brand-100 font-medium">
+                                Chaque contribution nous aide à maintenir nos cultes, à soutenir les nécessiteux et à proclamer l'Évangile.
+                            </p>
+                            <a href="/contribute" data-page="contribute" class="btn-primary py-5 px-10 text-xl bg-white text-brand-600 hover:bg-slate-50 shadow-2xl">
+                                <i class="fas fa-heart text-emerald-500 mr-2"></i>Payer ma dîme ou Offrande
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section Contact -->
+                <section id="contact" class="py-24 px-6 bg-slate-50">
+                    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16">
+                        <div class="space-y-12">
+                            <div class="space-y-4">
+                                <p class="text-brand-600 font-black uppercase tracking-widest text-xs">Contact</p>
+                                <h2 class="text-4xl md:text-5xl font-black text-slate-950 tracking-tight">Restons connectés</h2>
+                            </div>
+                            <div class="space-y-6">
+                                <div class="flex items-center gap-6 group">
+                                    <div class="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-xl text-slate-400 group-hover:bg-brand-600 group-hover:text-white transition-all shadow-sm">
+                                        <i class="fas fa-location-dot"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Adresse</p>
+                                        <p class="text-lg text-slate-900 font-bold">123 Avenue de l'Espoir, Kinshasa</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-6 group">
+                                    <div class="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-xl text-slate-400 group-hover:bg-brand-600 group-hover:text-white transition-all shadow-sm">
+                                        <i class="fas fa-phone"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Téléphone</p>
+                                        <p class="text-lg text-slate-900 font-bold">+243 812 345 678</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-6 group">
+                                    <div class="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-xl text-slate-400 group-hover:bg-brand-600 group-hover:text-white transition-all shadow-sm">
+                                        <i class="fas fa-envelope"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Email</p>
+                                        <p class="text-lg text-slate-900 font-bold">contact@maloty-church.org</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-10 rounded-4xl shadow-xl border border-slate-100">
+                            <form class="space-y-6">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <input type="text" class="pro-input py-4 bg-slate-50 border-none" placeholder="Prénom">
+                                    <input type="text" class="pro-input py-4 bg-slate-50 border-none" placeholder="Nom">
+                                </div>
+                                <input type="email" class="pro-input py-4 bg-slate-50 border-none" placeholder="Email">
+                                <textarea class="pro-textarea bg-slate-50 border-none" rows="4" placeholder="Votre message..."></textarea>
+                                <button type="button" class="btn-primary w-full py-5 text-lg shadow-xl shadow-brand-100">Envoyer le message</button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
+                <footer class="py-12 bg-white border-t border-slate-100 text-center">
+                    <div class="flex items-center justify-center gap-4 mb-6">
+                        <div class="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center text-slate-600">
+                            <i class="fas fa-church"></i>
+                        </div>
+                        <span class="text-lg font-black text-slate-900 tracking-tighter uppercase">MALOTY</span>
+                    </div>
+                    <p class="text-slate-400 font-medium">&copy; 2026 MALOTY Gestion Digitale. Tous droits réservés.</p>
+                </footer>
+
+                <style>
+                    .nav-link {
+                        font-size: 0.9rem;
+                        font-weight: 800;
+                        color: #64748b;
+                        text-transform: uppercase;
+                        letter-spacing: 0.1em;
+                        transition: all 0.3s;
+                    }
+                    .nav-link:hover, .nav-link.active {
+                        color: #0c87eb;
+                    }
+                    .service-card {
+                        padding: 3rem 2rem;
+                        border-radius: 3rem;
+                        background: white;
+                        border: 1px solid #f1f5f9;
+                        transition: all 0.4s;
+                    }
+                    .service-card:hover {
+                        transform: translateY(-10px);
+                        box-shadow: 0 30px 60px -12px rgba(15, 23, 42, 0.08);
+                        border-color: transparent;
+                    }
+                    html {
+                        scroll-behavior: smooth;
+                    }
+                    .btn-primary-sm {
+                        padding: 0.6rem 1.25rem;
+                        border-radius: 1rem;
+                        color: white;
+                        font-weight: 800;
+                        text-transform: uppercase;
+                        font-size: 0.75rem;
+                        letter-spacing: 0.05em;
+                        transition: all 0.3s;
+                    }
+                    .rounded-5xl { border-radius: 4rem; }
+                    .rounded-4xl { border-radius: 3rem; }
+                </style>
+            </div>
+        `;
+    }
+
+    static serviceCard(id, title, desc, icon, tone) {
+        return `
+            <div class="service-card text-center group">
+                <div class="w-16 h-16 mx-auto rounded-2xl bg-${tone}-50 text-${tone}-600 flex items-center justify-center text-2xl mb-8 group-hover:bg-${tone}-600 group-hover:text-white transition-all duration-500">
+                    <i class="fas ${icon}"></i>
+                </div>
+                <h3 class="text-xl font-black text-slate-950 mb-4">${title}</h3>
+                <p class="text-slate-500 font-medium leading-relaxed text-sm">${desc}</p>
+            </div>
+        `;
+    }
+
+    static eventCard(title, date, desc, img) {
+        return `
+            <div class="relative h-80 rounded-4xl overflow-hidden group">
+                <img src="${img}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
+                <div class="absolute bottom-0 left-0 p-8 space-y-2">
+                    <p class="text-blue-400 font-black uppercase tracking-[0.2em] text-[10px]">${date}</p>
+                    <h3 class="text-2xl font-black">${title}</h3>
+                    <p class="text-slate-300 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-500 max-w-sm">
+                        ${desc}
+                    </p>
+                </div>
+                <div class="absolute top-6 right-6">
+                    <div class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 }
 

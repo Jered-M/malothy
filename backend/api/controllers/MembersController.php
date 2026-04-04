@@ -79,10 +79,18 @@ class MembersController {
             'actif'
         ]);
 
+        $memberId = $this->db->lastInsertId();
+        audit_log(
+            'CREATE',
+            'members',
+            $memberId,
+            "Membre cree: {$input['first_name']} {$input['last_name']}"
+        );
+
         json_response([
             'success' => true,
             'message' => 'Membre créé avec succès',
-            'id' => $this->db->lastInsertId()
+            'id' => $memberId
         ], 201);
     }
 
@@ -118,6 +126,8 @@ class MembersController {
             $id
         ]);
 
+        audit_log('UPDATE', 'members', $id, 'Membre mis a jour');
+
         json_response([
             'success' => true,
             'message' => 'Membre mis à jour'
@@ -132,6 +142,8 @@ class MembersController {
 
         $stmt = $this->db->prepare('DELETE FROM members WHERE id = ?');
         $stmt->execute([$id]);
+
+        audit_log('DELETE', 'members', $id, 'Membre supprime');
 
         json_response([
             'success' => true,
@@ -188,6 +200,8 @@ class MembersController {
         $stmt = $this->db->prepare('UPDATE members SET photo = ? WHERE id = ?');
         $stmt->execute(['uploads/members/' . $filename, $id]);
 
+        audit_log('UPDATE', 'members', $id, 'Photo mise a jour');
+
         json_response([
             'success' => true,
             'message' => 'Photo mise à jour',
@@ -241,6 +255,8 @@ class MembersController {
 
         $stmt = $this->db->prepare('UPDATE members SET photo = NULL WHERE id = ?');
         $stmt->execute([$id]);
+
+        audit_log('UPDATE', 'members', $id, 'Photo supprimee');
 
         json_response([
             'success' => true,

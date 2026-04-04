@@ -39,17 +39,15 @@ function defineFromEnv($key, $default) {
 }
 
 // Valeurs par défaut avec priorité sur getenv()
-$envHost = $_ENV['DB_HOST'] ?? $_SERVER['DB_HOST'] ?? getenv('DB_HOST') ?: 'localhost';
+$envHost = $_ENV['DB_HOST'] ?? $_SERVER['DB_HOST'] ?? getenv('DB_HOST') ?: '127.0.0.1';
 $defaultDriver = (strpos($envHost, 'supabase') !== false || strpos($envHost, 'pooler') !== false) ? 'pgsql' : 'mysql';
 
-defineFromEnv('DB_DRIVER', $defaultDriver);
-defineFromEnv('DB_HOST', 'localhost');
-defineFromEnv('DB_USER', 'root');
-defineFromEnv('DB_PASSWORD', '');
-
-// Nom de base intelligent
-$defaultDbName = (defined('DB_DRIVER') && DB_DRIVER === 'pgsql') ? 'postgres' : 'eglise_m';
-defineFromEnv('DB_NAME', $defaultDbName);
+defineFromEnv('DB_DRIVER', 'pgsql');
+defineFromEnv('DB_HOST', 'VOTRE_PROJET.pooler.supabase.com'); // À REMPLACER PAR VOTRE HÔTE SUPABASE
+defineFromEnv('DB_USER', 'postgres.jxlhjeqyrtrnhziuizlw');
+defineFromEnv('DB_PASSWORD', 'DW,%%pXKh4tS*Xc');
+defineFromEnv('DB_NAME', 'postgres');
+defineFromEnv('DB_PORT', 6543);
 
 // Port intelligent
 $defaultPort = (defined('DB_DRIVER') && DB_DRIVER === 'pgsql') ? 6543 : 3306;
@@ -59,6 +57,12 @@ defineFromEnv('APP_NAME', 'MALOTY - Gestion d\'Église');
 defineFromEnv('APP_URL', 'http://localhost');
 defineFromEnv('APP_DEBUG', true);
 defineFromEnv('SESSION_TIMEOUT', 3600);
+
+// CONFIGURATION MAISHAPAY (MOBILE MONEY)
+defineFromEnv('MAISHAPAY_PUBLIC_KEY', 'VOTRE_CLE_PUBLIQUE');
+defineFromEnv('MAISHAPAY_SECRET_KEY', 'VOTRE_CLE_SECRETE');
+defineFromEnv('MAISHAPAY_GATEWAY_MODE', 0); // 0 pour TEST (Sandbox), 1 pour LIVE (Production)
+defineFromEnv('MAISHAPAY_CURRENCY', 'CDF'); // Devise par défaut
 
 // Constantes de l'application - NE PAS REDÉFINIR si déjà défini
 if (!defined('PROJECT_ROOT')) {

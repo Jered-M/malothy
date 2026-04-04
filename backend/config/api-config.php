@@ -6,8 +6,14 @@
 // Démarrer les sessions
 if (session_status() === PHP_SESSION_NONE) {
     // Si un token est passé via Authorization Header, l'utiliser comme session_id
-    $headers = getallheaders();
-    $auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+    // Fallback pour getallheaders() si non disponible
+    $auth = '';
+    if (function_exists('getallheaders')) {
+        $headers = getallheaders();
+        $auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+    } else {
+        $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    }
     
     if (preg_match('/Bearer\s+(.*)$/i', $auth, $matches)) {
         $token = trim($matches[1]);
@@ -39,8 +45,10 @@ if (in_array($origin, $allowed_origins)) {
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
+$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'CLI';
+
 // Gestion CORS preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+if ($requestMethod === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
@@ -70,6 +78,24 @@ function get_authenticated_user() {
         'id' => $_SESSION['user_id'],
         'role' => $_SESSION['user_role'] ?? 'secrétaire'
     ];
+}
+
+// Journaliser une action (audit trail)
+function audit_log($action, $tableName, $recordId = null, $details = '') {
+    try {
+        $db = Database::getInstance()->getConnection();
+        $userId = $_SESSION['user_id'] ?? null;
+        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
+        $createdAt = date('Y-m-d H:i:s');
+
+        $stmt = $db->prepare(
+            "INSERT INTO audit_logs (user_id, action, table_name, record_id, details, ip_address, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)"
+        );
+        $stmt->execute([$userId, $action, $tableName, $recordId, $details, $ipAddress, $createdAt]);
+    } catch (Exception $e) {
+        // Ne pas bloquer le flux si l'audit echoue
+    }
 }
 
 /**

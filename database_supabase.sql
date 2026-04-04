@@ -7,7 +7,7 @@ CREATE TYPE user_role AS ENUM ('admin', 'trésorier', 'secrétaire');
 CREATE TYPE user_status AS ENUM ('actif', 'inactif');
 CREATE TYPE member_status AS ENUM ('actif', 'inactif', 'suspendu');
 CREATE TYPE expense_status AS ENUM ('en attente', 'approuvee', 'rejetee');
-CREATE TYPE offering_type AS ENUM ('culte', 'evenement', 'mission', 'autre');
+CREATE TYPE offering_type AS ENUM ('culte', 'evenement', 'mission', 'cotisation', 'autre');
 
 -- TABLE: users
 CREATE TABLE users (
@@ -49,7 +49,10 @@ CREATE TABLE tithes (
     id SERIAL PRIMARY KEY,
     member_id INTEGER REFERENCES members(id) ON DELETE SET NULL,
     amount DECIMAL(10, 2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'CDF',
     tithe_date DATE NOT NULL,
+    payment_status VARCHAR(20) DEFAULT 'pending',
+    transaction_id VARCHAR(100),
     comment TEXT,
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL
@@ -62,7 +65,10 @@ CREATE TABLE offerings (
     id SERIAL PRIMARY KEY,
     type offering_type NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'CDF',
     offering_date DATE NOT NULL,
+    payment_status VARCHAR(20) DEFAULT 'pending',
+    transaction_id VARCHAR(100),
     description TEXT,
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL

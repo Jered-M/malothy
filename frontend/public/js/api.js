@@ -11,7 +11,13 @@ class APIClient {
     }
 
     isPublicAuthEndpoint(endpoint) {
-        return endpoint === '/auth/login';
+        const publicEndpoints = [
+            '/auth/login',
+            '/finance/public-members',
+            '/finance/public-tithe',
+            '/finance/public-offering'
+        ];
+        return publicEndpoints.includes(endpoint);
     }
 
     clearSession() {
@@ -43,29 +49,30 @@ class APIClient {
     /**
      * Faire une requête HTTP
      */
-    async request(method, endpoint, data = null) {
-        const options = {
+    async request(method, endpoint, data = null, opts = {}) {
+        const requestOptions = {
             method,
             headers: {
                 'Content-Type': 'application/json',
             },
             credentials: 'include'
         };
+        const suppressAuthRedirect = opts.suppressAuthRedirect === true;
 
         if (this.token && !this.isPublicAuthEndpoint(endpoint)) {
-            options.headers['Authorization'] = `Bearer ${this.token}`;
+            requestOptions.headers['Authorization'] = `Bearer ${this.token}`;
         }
 
         if (data && (method === 'POST' || method === 'PUT')) {
             if (data instanceof FormData) {
-                options.body = data;
-                delete options.headers['Content-Type'];
+                requestOptions.body = data;
+                delete requestOptions.headers['Content-Type'];
             } else {
-                options.body = JSON.stringify(data);
+                requestOptions.body = JSON.stringify(data);
             }
         }
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
         const contentType = response.headers.get('content-type') || '';
         const result = contentType.includes('application/json')
             ? await response.json()
@@ -74,7 +81,7 @@ class APIClient {
         if (response.status === 401) {
             const message = result?.error || 'Non authentifié';
 
-            if (!this.isPublicAuthEndpoint(endpoint)) {
+            if (!this.isPublicAuthEndpoint(endpoint) && !suppressAuthRedirect) {
                 this.clearSession();
 
                 if (window.app && window.app.currentPage !== 'login') {
@@ -108,7 +115,7 @@ class APIClient {
     }
 
     async getProfile() {
-        return await this.request('GET', '/auth/profile');
+        return await this.request('GET', '/auth/profile', null, { suppressAuthRedirect: true });
     }
 
     // ============ MEMBERS ============
@@ -151,6 +158,19 @@ class APIClient {
 
     async getDashboard() {
         return await this.request('GET', '/dashboard');
+    }
+
+    // ============ PUBLIC CONTRIBUTIONS ============
+    async getPublicMembers() {
+        return await this.request('GET', '/finance/public-members');
+    }
+
+    async createPublicTithe(data) {
+        return await this.request('POST', '/finance/public-tithe', data);
+    }
+
+    async createPublicOffering(data) {
+        return await this.request('POST', '/finance/public-offering', data);
     }
 
     // ============ EXPENSES ============

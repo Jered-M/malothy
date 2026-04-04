@@ -48,15 +48,32 @@ class ExpensesController {
 
         $filePath = null;
         if (isset($_FILES['document_path']) && $_FILES['document_path']['error'] === UPLOAD_ERR_OK) {
-            $uploadsDir = PROJECT_ROOT . '/uploads/expenses/';
-            if (!is_dir($uploadsDir)) {
-                mkdir($uploadsDir, 0777, true);
+            $file = $_FILES['document_path'];
+            $allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+            $maxSize = 5 * 1024 * 1024;
+
+            if (!in_array($file['type'], $allowed)) {
+                json_error('Format de justificatif non supporte (PDF, JPG, PNG, WEBP)', 400);
             }
 
-            $fileName = time() . '_' . basename($_FILES['document_path']['name']);
+            if ($file['size'] > $maxSize) {
+                json_error('Justificatif trop volumineux (max 5MB)', 400);
+            }
+
+            $uploadsDir = PROJECT_ROOT . '/uploads/expenses/';
+            if (!is_dir($uploadsDir)) {
+                mkdir($uploadsDir, 0755, true);
+            }
+
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            $ext = preg_replace('/[^a-z0-9]+/i', '', $ext);
+            if ($ext === '') {
+                $ext = 'bin';
+            }
+            $fileName = 'expense_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
             $targetPath = $uploadsDir . $fileName;
 
-            if (move_uploaded_file($_FILES['document_path']['tmp_name'], $targetPath)) {
+            if (move_uploaded_file($file['tmp_name'], $targetPath)) {
                 $filePath = '/uploads/expenses/' . $fileName;
             }
         }

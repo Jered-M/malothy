@@ -108,6 +108,7 @@ define('OFFERING_TYPES', [
     'culte' => 'Culte',
     'evenement' => 'Événement',
     'mission' => 'Mission',
+    'cotisation' => 'Cotisation',
     'autre' => 'Autre'
 ]);
 ?>
