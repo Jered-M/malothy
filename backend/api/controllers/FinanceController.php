@@ -50,7 +50,7 @@ class FinanceController {
         $user = checkRole(['admin', 'Trésorier']);
         $input = get_input();
 
-        $required = ['member_id', 'amount', 'tithe_date'];
+        $required = ['amount', 'tithe_date'];
         foreach ($required as $field) {
             if (empty($input[$field])) {
                 json_error("Champ '{$field}' requis", 400);
@@ -58,7 +58,7 @@ class FinanceController {
         }
 
         $data = [
-            'member_id' => $input['member_id'],
+            'member_id' => !empty($input['member_id']) && $input['member_id'] !== 'null' ? $input['member_id'] : null,
             'amount' => $input['amount'],
             'currency' => $input['currency'] ?? 'CDF',
             'tithe_date' => $input['tithe_date'],
@@ -234,7 +234,7 @@ class FinanceController {
 
         $data = [
             'type' => $input['type'],
-            'member_id' => $input['member_id'] ?? null,
+            // Pas de member_id ici car la table offerings ne possède pas cette colonne dans le schéma actuel
             'amount' => $input['amount'],
             'currency' => $input['currency'] ?? 'CDF',
             'offering_date' => $input['offering_date'],

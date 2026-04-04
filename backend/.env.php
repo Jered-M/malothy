@@ -51,10 +51,18 @@ defineFromEnv('DB_PORT', 6543);
 
 // Port intelligent
 $defaultPort = (defined('DB_DRIVER') && DB_DRIVER === 'pgsql') ? 6543 : 3306;
-defineFromEnv('DB_PORT', $defaultPort);
+if (!defined('DB_PORT')) {
+    defineFromEnv('DB_PORT', $defaultPort);
+}
 
 defineFromEnv('APP_NAME', 'MALOTY - Gestion d\'Église');
-defineFromEnv('APP_URL', 'http://localhost');
+
+// APP_URL Dynamique (Essentiel pour les redirections MaishaPay sur Render/Heroku)
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$currentUrl = $protocol . $host;
+defineFromEnv('APP_URL', $currentUrl);
+
 defineFromEnv('APP_DEBUG', true);
 defineFromEnv('SESSION_TIMEOUT', 3600);
 

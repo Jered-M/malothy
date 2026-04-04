@@ -41,12 +41,6 @@ COPY . /var/www/html
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
-# Ajuster le port Apache dynamiquement pour Render (qui utilise $PORT)
-# Par défaut 80 si non spécifié, mais Render injecte $PORT
-RUN sed -i 's/80/${PORT}/g' /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf
-
-# Exposer le port par défaut (Render le détecte via $PORT)
-EXPOSE 80
-
-# Démarrer Apache en arrière-plan
-CMD ["apache2-foreground"]
+# Ajuster le port Apache à l'exécution pour Render (qui injecte $PORT dynamiquement)
+# On utilise un script de démarrage pour garantir que la config Apache est correcte au lancement
+CMD sed -i "s/80/${PORT:-80}/g" /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf && apache2-foreground
