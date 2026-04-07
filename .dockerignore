@@ -27,5 +27,7 @@ list_users_debug.php
 !database_supabase.sql
 uploads/members/*
 uploads/expenses/*
+uploads/home-events/*
 !uploads/members/.gitkeep
 !uploads/expenses/.gitkeep
+!uploads/home-events/.gitkeep

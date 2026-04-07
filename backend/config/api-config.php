@@ -76,6 +76,7 @@ function get_authenticated_user() {
     }
     return [
         'id' => $_SESSION['user_id'],
+        'email' => $_SESSION['user_email'] ?? '',
         'role' => $_SESSION['user_role'] ?? 'secrétaire'
     ];
 }

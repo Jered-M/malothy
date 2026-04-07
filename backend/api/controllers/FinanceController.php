@@ -7,19 +7,19 @@
 require_once PROJECT_ROOT . '/backend/models/Tithe.php';
 require_once PROJECT_ROOT . '/backend/models/Offering.php';
 require_once PROJECT_ROOT . '/backend/models/Member.php';
-require_once PROJECT_ROOT . '/backend/api/services/MaishaPayService.php';
+require_once PROJECT_ROOT . '/backend/api/services/FlutterwaveService.php';
 
 class FinanceController {
     private $titheModel;
     private $offeringModel;
     private $memberModel;
-    private $maishaPay;
+    private $paymentService;
 
     public function __construct() {
         $this->titheModel = new Tithe();
         $this->offeringModel = new Offering();
         $this->memberModel = new Member();
-        $this->maishaPay = new MaishaPayService();
+        $this->paymentService = new FlutterwaveService();
     }
 
     /**
@@ -193,14 +193,14 @@ class FinanceController {
                 'currency' => $input['currency'] ?? 'CDF',
                 'tithe_date' => $input['tithe_date'],
                 'payment_status' => 'pending',
-                'comment' => "Don par: {$memberName} | " . ($input['comment'] ?? '') . ' (MaishaPay Pending)',
+                'comment' => "Don par: {$memberName} | " . ($input['comment'] ?? '') . ' (Flutterwave Pending)',
                 'recorded_by' => null 
             ];
 
             $id = $this->titheModel->recordTithe($data);
 
-            // Préparer le lien MaishaPay
-            $paymentData = $this->maishaPay->generateCheckoutLink([
+            // Préparer le lien de paiement Flutterwave
+            $paymentData = $this->paymentService->generateCheckoutLink([
                 'amount' => $data['amount'],
                 'currency' => $data['currency'],
                 'description' => "Dîme de {$memberName}",
@@ -235,23 +235,24 @@ class FinanceController {
                 }
             }
 
+            $memberId = $input['member_id'] ?? null;
             $memberName = $input['member_name'] ?? 'Donateur Anonyme';
 
             $data = [
                 'type' => $input['type'],
-                // Pas de member_id ici car la table offerings ne possède pas cette colonne dans le schéma actuel
+                'member_id' => $memberId,
                 'amount' => $input['amount'],
                 'currency' => $input['currency'] ?? 'CDF',
                 'offering_date' => $input['offering_date'],
                 'payment_status' => 'pending',
-                'description' => ($input['description'] ?? "Don de {$memberName}") . ' (MaishaPay Pending)',
+                'description' => ($input['description'] ?? "Don de {$memberName}") . ' (Flutterwave Pending)',
                 'recorded_by' => null // Public
             ];
 
             $id = $this->offeringModel->recordOffering($data);
 
-            // Préparer le lien MaishaPay
-            $paymentData = $this->maishaPay->generateCheckoutLink([
+            // Préparer le lien de paiement Flutterwave
+            $paymentData = $this->paymentService->generateCheckoutLink([
                 'amount' => $data['amount'],
                 'currency' => $data['currency'],
                 'description' => "Offrande de {$memberName}",

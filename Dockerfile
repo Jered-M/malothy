@@ -37,8 +37,12 @@ WORKDIR /var/www/html
 # Copier les fichiers du projet dans le conteneur
 COPY . /var/www/html
 
-# Configurer les permissions pour Apache
-RUN chown -R www-data:www-data /var/www/html \
+# Préparer les répertoires runtime et permissions Apache
+RUN mkdir -p /var/www/html/uploads/members \
+    /var/www/html/uploads/home-events \
+    /var/www/html/uploads/expenses \
+    /var/www/html/tmp \
+    && chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
 # Ajuster le port Apache à l'exécution pour Render (qui injecte $PORT dynamiquement)

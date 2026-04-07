@@ -49,19 +49,92 @@ class APIClient {
     /**
      * Faire une requête HTTP
      */
+    getAuthHeaders(endpoint, headers = {}) {
+        const requestHeaders = { ...headers };
+
+        if (this.token && !this.isPublicAuthEndpoint(endpoint)) {
+            requestHeaders['Authorization'] = `Bearer ${this.token}`;
+        }
+
+        return requestHeaders;
+    }
+
+    extractFilename(contentDisposition = '') {
+        if (!contentDisposition) {
+            return '';
+        }
+
+        const utfMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+        if (utfMatch && utfMatch[1]) {
+            try {
+                return decodeURIComponent(utfMatch[1]);
+            } catch (error) {
+                return utfMatch[1];
+            }
+        }
+
+        const plainMatch = contentDisposition.match(/filename=\"?([^\";]+)\"?/i);
+        return plainMatch ? plainMatch[1] : '';
+    }
+
+    async download(endpoint) {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'GET',
+            headers: this.getAuthHeaders(endpoint),
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            let message = `Erreur API (${response.status})`;
+            const text = await response.text();
+
+            if (text) {
+                try {
+                    const result = JSON.parse(text);
+                    message = result?.error || message;
+                } catch (error) {
+                    message = text;
+                }
+            }
+
+            if (response.status === 401) {
+                this.clearSession();
+
+                if (window.app && window.app.currentPage !== 'login') {
+                    window.app.navigate('login');
+                }
+            }
+
+            throw new Error(message);
+        }
+
+        const blob = await response.blob();
+        const filename =
+            this.extractFilename(response.headers.get('Content-Disposition')) || 'telechargement';
+        const objectUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+
+        link.href = objectUrl;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        setTimeout(() => window.URL.revokeObjectURL(objectUrl), 1000);
+
+        return { success: true, filename };
+    }
+
     async request(method, endpoint, data = null, opts = {}) {
         const requestOptions = {
             method,
-            headers: {
+            headers: this.getAuthHeaders(endpoint, {
                 'Content-Type': 'application/json',
-            },
+            }),
             credentials: 'include'
         };
         const suppressAuthRedirect = opts.suppressAuthRedirect === true;
-
-        if (this.token && !this.isPublicAuthEndpoint(endpoint)) {
-            requestOptions.headers['Authorization'] = `Bearer ${this.token}`;
-        }
 
         if (data && (method === 'POST' || method === 'PUT')) {
             if (data instanceof FormData) {
@@ -73,10 +146,17 @@ class APIClient {
         }
 
         const response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
-        const contentType = response.headers.get('content-type') || '';
-        const result = contentType.includes('application/json')
-            ? await response.json()
-            : null;
+        
+        let result = null;
+        const text = await response.text();
+        if (text) {
+            try {
+                result = JSON.parse(text);
+            } catch (err) {
+                // Not JSON, ignore or log
+                console.warn(`Response from ${endpoint} is not valid JSON:`, text);
+            }
+        }
 
         if (response.status === 401) {
             const message = result?.error || 'Non authentifié';
@@ -160,6 +240,24 @@ class APIClient {
         return await this.request('GET', '/dashboard');
     }
 
+    async getMemberDashboard() {
+        return await this.request('GET', '/dashboard/member');
+    }
+
+    async getHomeEvents() {
+        return await this.request('GET', '/settings/home-events');
+    }
+
+    async saveHomeEvents(events) {
+        return await this.request('POST', '/settings/home-events', { events });
+    }
+
+    async uploadHomeEventImage(file) {
+        const formData = new FormData();
+        formData.append('image', file);
+        return await this.request('POST', '/settings/home-event-image', formData);
+    }
+
     // ============ PUBLIC CONTRIBUTIONS ============
     async getPublicMembers() {
         return await this.request('GET', '/finance/public-members');
@@ -207,22 +305,22 @@ class APIClient {
     }
 
     async exportPDF(type, year, month) {
-        let url = `/report/export-pdf?type=${type}&year=${year}`;
-        if (month) url += `&month=${month}`;
-        window.location.href = url;
+        let endpoint = `/report/export-pdf?type=${encodeURIComponent(type)}&year=${encodeURIComponent(year)}`;
+        if (month) endpoint += `&month=${encodeURIComponent(month)}`;
+        return await this.download(endpoint);
     }
 
     async exportCSV(type, year) {
-        let url = `/report/export-csv?type=${type}&year=${year}`;
-        window.location.href = url;
+        const endpoint = `/report/export-csv?type=${encodeURIComponent(type)}&year=${encodeURIComponent(year)}`;
+        return await this.download(endpoint);
     }
 
     async exportSQL() {
-        window.location.href = `/report/export-sql`;
+        return await this.download('/report/export-sql');
     }
 
     async exportJSON() {
-        window.location.href = `/report/export-json`;
+        return await this.download('/report/export-json');
     }
 
     // ============ SHORTHANDS ============

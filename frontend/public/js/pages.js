@@ -92,12 +92,14 @@ class Pages {
         return label ? { label, amount } : null;
     }
 
-    static reportCard({ href = '#', page = '', title, subtitle, icon, tone = 'brand', external = false, label = 'Ouvrir' }) {
+    static reportCard({ href = '#', page = '', title, subtitle, icon, tone = 'brand', external = false, label = 'Ouvrir', action = '', type = '' }) {
         const target = external ? 'target="_blank" rel="noopener noreferrer"' : '';
         const navigation = page ? `data-page="${page}"` : '';
+        const act = action ? `data-action="${action}"` : '';
+        const typ = type ? `data-report-type="${type}"` : '';
 
         return `
-            <a href="${href}" ${navigation} ${target} class="surface-panel action-card">
+            <a href="${href}" ${navigation} ${act} ${typ} ${target} class="surface-panel action-card">
                 <div class="action-card-head">
                     <span class="action-icon tone-${tone}">
                         <i class="fas ${icon}"></i>
@@ -452,6 +454,7 @@ class Pages {
                                                     <th>Téléphone</th>
                                                     <th>Email</th>
                                                     <th>Statut</th>
+                                                    <th class="text-right">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -490,6 +493,22 @@ class Pages {
                                                                     <p class="table-name">${member.email || 'Adresse email absente'}</p>
                                                                 </td>
                                                                 <td>${UI.statusBadge(member.status || 'actif')}</td>
+                                                                <td class="text-right">
+                                                                    <div class="flex items-center justify-end gap-2">
+                                                                        <button class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors flex items-center justify-center" 
+                                                                                title="Modifier ce membre"
+                                                                                data-page="members-form"
+                                                                                data-edit-member="${member.id}">
+                                                                            <i class="fas fa-edit text-xs"></i>
+                                                                        </button>
+                                                                        <button class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors flex items-center justify-center" 
+                                                                                title="Supprimer ce membre"
+                                                                                data-delete-member="${member.id}"
+                                                                                data-member-name="${this.fullName(member)}">
+                                                                            <i class="fas fa-trash-alt text-xs"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
                                                             </tr>
                                                         `;
                                                         }
@@ -519,14 +538,31 @@ class Pages {
         }
     }
 
-    static async memberFormPage() {
+    static async memberFormPage(memberId = null) {
+        let member = {};
+        let isEdit = false;
+
+        if (memberId) {
+            try {
+                const res = await api.getMember(memberId);
+                if (res.success) {
+                    member = res.data;
+                    isEdit = true;
+                }
+            } catch (err) {
+                console.error("Erreur chargement membre:", err);
+            }
+        }
+
         return UI.shell(
             'members',
             `
                 ${UI.pageHeader({
-                    eyebrow: 'Création',
-                    title: 'Ajouter un membre',
-                    subtitle: 'Le formulaire a été enrichi pour mieux refléter les champs réellement attendus par l’API et offrir une expérience plus crédible.',
+                    eyebrow: isEdit ? 'Modification' : 'Création',
+                    title: isEdit ? 'Modifier le membre' : 'Ajouter un membre',
+                    subtitle: isEdit 
+                        ? `Mise à jour des informations de ${member.first_name} ${member.last_name}.`
+                        : 'Enregistrez un nouveau membre pour alimenter le registre de l’église.',
                     actions: `
                         <a href="#" data-page="members" class="btn-secondary">
                             <i class="fas fa-arrow-left"></i>
@@ -538,43 +574,71 @@ class Pages {
                 <section class="grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr,0.8fr]">
                     <div class="surface-panel p-6 md:p-8">
                         <form id="memberForm" class="member-form grid grid-cols-1 gap-6 md:grid-cols-2">
+                            ${isEdit ? `<input type="hidden" name="id" value="${member.id}">` : ''}
                             <div>
                                 <label class="field-label" for="first_name">Prénom</label>
-                                <input id="first_name" name="first_name" type="text" class="pro-input" placeholder="Ex: Josué" required>
+                                <input id="first_name" name="first_name" type="text" class="pro-input" placeholder="Ex: Josué" required value="${member.first_name || ''}">
                             </div>
                             <div>
                                 <label class="field-label" for="last_name">Nom</label>
-                                <input id="last_name" name="last_name" type="text" class="pro-input" placeholder="Ex: Kabamba" required>
+                                <input id="last_name" name="last_name" type="text" class="pro-input" placeholder="Ex: Kabamba" required value="${member.last_name || ''}">
                             </div>
                             <div>
-                                <label class="field-label" for="member_email">Email</label>
-                                <input id="member_email" name="email" type="email" class="pro-input" placeholder="nom@exemple.com">
+                                <label class="field-label" for="member_email">Email (Identifiant de connexion)</label>
+                                <input id="member_email" name="email" type="email" class="pro-input" placeholder="nom@exemple.com" required value="${member.email || ''}" ${isEdit ? 'readonly' : ''}>
                             </div>
                             <div>
                                 <label class="field-label" for="phone">Téléphone</label>
-                                <input id="phone" name="phone" type="tel" class="pro-input" placeholder="+243 ..." required>
+                                <input id="phone" name="phone" type="tel" class="pro-input" placeholder="+243 ..." required value="${member.phone || ''}">
                             </div>
                             <div class="md:col-span-2">
                                 <label class="field-label" for="address">Adresse</label>
-                                <input id="address" name="address" type="text" class="pro-input" placeholder="Commune, quartier, avenue">
+                                <input id="address" name="address" type="text" class="pro-input" placeholder="Commune, quartier, avenue" value="${member.address || ''}">
                             </div>
                             <div>
                                 <label class="field-label" for="department">Département</label>
-                                <input id="department" name="department" type="text" class="pro-input" placeholder="Chorale, jeunesse, accueil...">
+                                <input id="department" name="department" type="text" class="pro-input" placeholder="Chorale, jeunesse, accueil..." value="${member.department || ''}">
                             </div>
                             <div>
                                 <label class="field-label" for="join_date">Date d’adhésion</label>
-                                <input id="join_date" name="join_date" type="date" class="pro-input" value="${this.today()}" required>
+                                <input id="join_date" name="join_date" type="date" class="pro-input" value="${member.join_date || this.today()}" required>
+                            </div>
+                            <div>
+                                <label class="field-label" for="status_select">Statut</label>
+                                <select id="status_select" name="status" class="pro-select">
+                                    <option value="actif" ${member.status === 'actif' ? 'selected' : ''}>Actif</option>
+                                    <option value="inactif" ${member.status === 'inactif' ? 'selected' : ''}>Inactif</option>
+                                    <option value="suspendu" ${member.status === 'suspendu' ? 'selected' : ''}>Suspendu</option>
+                                </select>
                             </div>
                             <div class="md:col-span-2">
                                 <label class="field-label" for="photo">Photo de profil (optionnel)</label>
                                 <input id="photo" name="photo" type="file" class="pro-input" accept="image/jpeg,image/png,image/webp">
                                 <p class="text-[11px] text-slate-500 mt-2">JPG, PNG ou WEBP. Max 5MB</p>
                             </div>
+                            
+                            <div class="md:col-span-2 bg-brand-50/50 p-6 rounded-xl border border-brand-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="md:col-span-2 flex items-center justify-between border-b border-brand-100 pb-3 mb-2">
+                                    <div>
+                                        <p class="text-sm font-bold text-brand-900">${isEdit ? 'Réinitialiser le mot de passe' : 'Accès membre (Compte)'}</p>
+                                        <p class="text-[11px] text-brand-700">L'identifiant est l'adresse email renseignée.</p>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        ${UI.badge(isEdit ? 'Optionnel' : 'Activé par défaut', isEdit ? 'slate' : 'brand')}
+                                        <input type="hidden" name="create_account" value="true">
+                                    </div>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="field-label text-brand-900" for="account_password">${isEdit ? 'Nouveau mot de passe (laisser vide pour ne pas changer)' : 'Définir le mot de passe initial'}</label>
+                                    <input id="account_password" name="account_password" type="text" class="pro-input border-brand-200" placeholder="${isEdit ? 'Nouveau code...' : 'Ex: 123456'}" ${isEdit ? '' : `required value="${Math.floor(100000 + Math.random() * 900000)}"`}>
+                                    <p class="text-[10px] text-slate-500 mt-1">${isEdit ? 'Remplissez ce champ pour forcer un nouveau mot de passe.' : 'Un code à 6 chiffres a été généré par défaut. Vous pouvez le modifier.'}</p>
+                                </div>
+                            </div>
+
                             <div class="md:col-span-2">
                                 <button type="submit" class="btn-primary w-full">
-                                    <i class="fas fa-floppy-disk"></i>
-                                    <span>Enregistrer le membre</span>
+                                    <i class="fas ${isEdit ? 'fa-save' : 'fa-user-plus'}"></i>
+                                    <span>${isEdit ? 'Mettre à jour la fiche' : 'Créer le compte membre'}</span>
                                 </button>
                             </div>
                         </form>
@@ -586,8 +650,15 @@ class Pages {
                         <div class="summary-list mt-5">
                             <div class="summary-row">
                                 <div>
-                                    <strong>Coordonnées utiles</strong>
-                                    <span>Le téléphone et la date d’adhésion sont obligatoires.</span>
+                                    <strong>Identifiant de connexion</strong>
+                                    <span>L'adresse email saisie servira d'identifiant pour le compte membre.</span>
+                                </div>
+                                <b class="text-rose-600">Strict</b>
+                            </div>
+                            <div class="summary-row">
+                                <div>
+                                    <strong>Mot de passe initial</strong>
+                                    <span>L'admin définit le code (6 chiffres par défaut) à transmettre au membre.</span>
                                 </div>
                                 <b>Requis</b>
                             </div>
@@ -1008,11 +1079,104 @@ class Pages {
 
     static async reportsPage() {
         try {
+            const user = this.getCurrentUser();
+            const role = UI.normalizeRole(user.role);
+            const isAdmin = role === 'admin';
             const dashboard = await api.getDashboard();
             const stats = dashboard.stats || {};
             const income = this.toNumber(stats.monthlyTithes) + this.toNumber(stats.monthlyOfferings);
             const expenses = this.toNumber(stats.monthlyExpenses);
             const balance = income - expenses;
+            const downloads = [
+                isAdmin
+                    ? this.reportCard({
+                        href: '#',
+                        title: 'Bilan PDF',
+                        subtitle: 'SynthÃ¨se financiÃ¨re',
+                        icon: 'fa-file-pdf',
+                        tone: 'brand',
+                        label: 'TÃ©lÃ©charger',
+                        action: 'export-pdf',
+                        type: 'balance'
+                    })
+                    : '',
+                this.reportCard({
+                    href: '#',
+                    title: 'Membres CSV',
+                    subtitle: 'Liste complÃ¨te',
+                    icon: 'fa-file-csv',
+                    tone: 'emerald',
+                    label: 'TÃ©lÃ©charger',
+                    action: 'export-csv',
+                    type: 'members'
+                }),
+                isAdmin
+                    ? this.reportCard({
+                        href: '#',
+                        title: 'DÃ®mes PDF',
+                        subtitle: 'Rapport complet',
+                        icon: 'fa-file-pdf',
+                        tone: 'brand',
+                        label: 'TÃ©lÃ©charger',
+                        action: 'export-pdf',
+                        type: 'tithes'
+                    })
+                    : '',
+                this.reportCard({
+                    href: '#',
+                    title: 'DÃ®mes CSV',
+                    subtitle: 'Tous les versements',
+                    icon: 'fa-file-csv',
+                    tone: 'emerald',
+                    label: 'TÃ©lÃ©charger',
+                    action: 'export-csv',
+                    type: 'tithes'
+                }),
+                isAdmin
+                    ? this.reportCard({
+                        href: '#',
+                        title: 'Sauvegarde JSON',
+                        subtitle: 'Backup complet',
+                        icon: 'fa-database',
+                        tone: 'amber',
+                        label: 'TÃ©lÃ©charger',
+                        action: 'export-json'
+                    })
+                    : '',
+                isAdmin
+                    ? this.reportCard({
+                        href: '#',
+                        title: 'SQL Dump',
+                        subtitle: 'Script restauration',
+                        icon: 'fa-server',
+                        tone: 'slate',
+                        label: 'TÃ©lÃ©charger',
+                        action: 'export-sql'
+                    })
+                    : '',
+                this.reportCard({
+                    href: '#',
+                    title: 'Offrandes CSV',
+                    subtitle: 'Tous les collectes',
+                    icon: 'fa-file-csv',
+                    tone: 'amber',
+                    label: 'TÃ©lÃ©charger',
+                    action: 'export-csv',
+                    type: 'offerings'
+                }),
+                isAdmin
+                    ? this.reportCard({
+                        page: 'audit-logs',
+                        title: 'TraÃ§abilitÃ©',
+                        subtitle: 'Logs d\'audit',
+                        icon: 'fa-shield-halved',
+                        tone: 'slate',
+                        label: 'Consulter'
+                    })
+                    : ''
+            ]
+                .filter(Boolean)
+                .join('');
 
             return UI.shell(
                 'reports',
@@ -1038,67 +1202,72 @@ class Pages {
                     <h2 class="text-2xl font-black text-slate-950 mt-8 mb-4">Téléchargements</h2>
                     <section class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                         ${this.reportCard({
-                            href: 'javascript:void(api.exportPDF("balance",' + new Date().getFullYear() + '))',
+                            href: '#',
                             title: 'Bilan PDF',
                             subtitle: 'Synthèse financière',
                             icon: 'fa-file-pdf',
                             tone: 'brand',
-                            external: true,
-                            label: 'Télécharger'
+                            label: 'Télécharger',
+                            action: 'export-pdf',
+                            type: 'balance'
                         })}
                         ${this.reportCard({
-                            href: 'javascript:void(api.exportCSV("members","all"))',
+                            href: '#',
                             title: 'Membres CSV',
                             subtitle: 'Liste complète',
                             icon: 'fa-file-csv',
                             tone: 'emerald',
-                            external: true,
-                            label: 'Télécharger'
+                            label: 'Télécharger',
+                            action: 'export-csv',
+                            type: 'members'
                         })}
                         ${this.reportCard({
-                            href: 'javascript:void(api.exportPDF("tithes",' + new Date().getFullYear() + '))',
+                            href: '#',
                             title: 'Dîmes PDF',
                             subtitle: 'Rapport complet',
                             icon: 'fa-file-pdf',
                             tone: 'brand',
-                            external: true,
-                            label: 'Télécharger'
+                            label: 'Télécharger',
+                            action: 'export-pdf',
+                            type: 'tithes'
                         })}
                         ${this.reportCard({
-                            href: 'javascript:void(api.exportCSV("tithes",' + new Date().getFullYear() + '))',
+                            href: '#',
                             title: 'Dîmes CSV',
                             subtitle: 'Tous les versements',
                             icon: 'fa-file-csv',
                             tone: 'emerald',
-                            external: true,
-                            label: 'Télécharger'
+                            label: 'Télécharger',
+                            action: 'export-csv',
+                            type: 'tithes'
                         })}
                         ${this.reportCard({
-                            href: 'javascript:void(api.exportJSON())',
+                            href: '#',
                             title: 'Sauvegarde JSON',
                             subtitle: 'Backup complet',
                             icon: 'fa-database',
                             tone: 'amber',
-                            external: true,
-                            label: 'Télécharger'
+                            label: 'Télécharger',
+                            action: 'export-json'
                         })}
                         ${this.reportCard({
-                            href: 'javascript:void(api.exportSQL())',
+                            href: '#',
                             title: 'SQL Dump',
                             subtitle: 'Script restauration',
                             icon: 'fa-server',
                             tone: 'slate',
-                            external: true,
-                            label: 'Télécharger'
+                            label: 'Télécharger',
+                            action: 'export-sql'
                         })}
                         ${this.reportCard({
-                            href: 'javascript:void(api.exportCSV("offerings",' + new Date().getFullYear() + '))',
+                            href: '#',
                             title: 'Offrandes CSV',
                             subtitle: 'Tous les collectes',
                             icon: 'fa-file-csv',
                             tone: 'amber',
-                            external: true,
-                            label: 'Télécharger'
+                            label: 'Télécharger',
+                            action: 'export-csv',
+                            type: 'offerings'
                         })}
                         ${this.reportCard({
                             page: 'audit-logs',
@@ -1473,9 +1642,27 @@ class Pages {
         try {
             const result = await api.request('GET', '/users');
             const users = result.data || [];
+
+            let homeEvents = [];
+            try {
+                const eventsResult = await api.getHomeEvents();
+                homeEvents = Array.isArray(eventsResult.data) ? eventsResult.data : [];
+            } catch (err) {
+                console.warn('Impossible de charger les evenements admin', err);
+            }
+            
+            let settings = {};
+            try {
+                const settingsResult = await api.request('GET', '/settings');
+                settings = settingsResult.data || {};
+            } catch (err) {
+                console.warn('Impossible de charger les paramètres', err);
+            }
+            
             const admins = users.filter((user) => UI.normalizeRole(user.role) === 'admin').length;
             const treasurers = users.filter((user) => UI.normalizeRole(user.role) === 'tresorier').length;
             const secretaries = users.filter((user) => UI.normalizeRole(user.role) === 'secretaire').length;
+            const homeEventsPayload = encodeURIComponent(JSON.stringify(homeEvents));
 
             return UI.shell(
                 'settings',
@@ -1540,6 +1727,176 @@ class Pages {
                                   'L’API ne remonte actuellement aucun compte utilisateur actif pour l’administration.'
                               )
                     }
+
+                    <section class="mt-12 surface-panel p-6 md:p-8">
+                        <div class="mb-6 border-b border-slate-100 pb-4">
+                            <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                                <div>
+                                    <h2 class="text-xl font-bold text-slate-950">Agenda de la page accueil</h2>
+                                    <p class="text-slate-500 font-medium text-sm mt-1">
+                                        Les evenements affiches sur l accueil sont publies ici par l admin uniquement.
+                                    </p>
+                                </div>
+                                ${UI.badge('Admin seulement', 'amber')}
+                            </div>
+                        </div>
+
+                        <form id="homeEventForm" class="space-y-6">
+                            <input type="hidden" id="homeEventIndex" value="">
+                            <input type="hidden" id="homeEventsPayload" value="${homeEventsPayload}">
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="field-label" for="homeEventTitle">Titre</label>
+                                    <input id="homeEventTitle" name="title" type="text" class="pro-input" placeholder="Conference, semaine de priere, culte special..." required>
+                                </div>
+                                <div>
+                                    <label class="field-label" for="homeEventPeriod">Periode</label>
+                                    <input id="homeEventPeriod" name="period" type="text" class="pro-input" placeholder="DU 11 AU 15 MARS, MARDI & JEUDI..." required>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="field-label" for="homeEventDescription">Description</label>
+                                    <textarea id="homeEventDescription" name="description" rows="4" class="pro-textarea" placeholder="Theme, horaires, intervenants, informations utiles..." required></textarea>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="field-label" for="homeEventImage">Image URL</label>
+                                    <input id="homeEventImage" name="image_url" type="url" class="pro-input" placeholder="https://...">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="field-label" for="homeEventImageUpload">Image depuis le telephone ou le PC</label>
+                                    <input id="homeEventImageUpload" name="image_file" type="file" class="pro-input" accept="image/jpeg,image/png,image/webp,image/gif,image/*">
+                                    <p class="text-[11px] text-slate-500 mt-2">
+                                        Choisissez une image locale. Si un fichier est selectionne, il remplace l URL.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-3">
+                                <button type="submit" class="btn-primary">
+                                    <i class="fas fa-paper-plane"></i>
+                                    <span id="homeEventSubmitLabel">Publier l evenement</span>
+                                </button>
+                                <button type="button" id="homeEventReset" class="btn-secondary">
+                                    <i class="fas fa-rotate-left"></i>
+                                    <span>Vider le formulaire</span>
+                                </button>
+                                <p class="text-xs font-medium text-slate-400">Maximum 6 publications visibles sur l accueil.</p>
+                            </div>
+                        </form>
+
+                        ${
+                            homeEvents.length
+                                ? `
+                                    <div class="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                                        ${homeEvents
+                                            .map((event, index) => `
+                                                <article class="rounded-[2rem] border border-slate-100 bg-slate-50/80 p-6">
+                                                    <div class="flex items-start justify-between gap-4">
+                                                        ${UI.badge(event.period || 'A venir', 'brand')}
+                                                        <span class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-300">Publication ${index + 1}</span>
+                                                    </div>
+                                                    <h3 class="mt-4 text-xl font-black text-slate-950">${event.title || 'Evenement'}</h3>
+                                                    <p class="mt-3 text-sm font-medium leading-7 text-slate-500">${event.description || ''}</p>
+                                                    ${event.image_url ? `
+                                                        <div class="mt-4 overflow-hidden rounded-2xl border border-slate-100 bg-white">
+                                                            <img src="${event.image_url}" alt="${event.title || 'Evenement'}" class="h-44 w-full object-cover">
+                                                        </div>
+                                                    ` : ''}
+                                                    <div class="mt-4 rounded-2xl bg-white px-4 py-3 text-xs font-medium text-slate-500">
+                                                        ${event.image_url || 'Aucune image definie'}
+                                                    </div>
+                                                    <div class="mt-5 flex flex-wrap gap-3">
+                                                        <button type="button" data-edit-home-event="${index}" class="btn-secondary">
+                                                            <i class="fas fa-pen"></i>
+                                                            <span>Modifier</span>
+                                                        </button>
+                                                        <button type="button" data-delete-home-event="${index}" class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-rose-600 transition hover:bg-rose-100">
+                                                            <i class="fas fa-trash"></i>
+                                                            <span>Supprimer</span>
+                                                        </button>
+                                                    </div>
+                                                </article>
+                                            `)
+                                            .join('')}
+                                    </div>
+                                `
+                                : `
+                                    <div class="mt-8 rounded-[2rem] border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
+                                        <p class="text-xs font-black uppercase tracking-[0.16em] text-brand-600">Agenda</p>
+                                        <h3 class="mt-3 text-2xl font-black text-slate-950">Aucun evenement publie</h3>
+                                        <p class="mt-2 text-sm font-medium text-slate-500">Publiez ici pour alimenter la page accueil.</p>
+                                    </div>
+                                `
+                        }
+                    </section>
+
+                    <section class="mt-12 surface-panel p-6 md:p-8">
+                        <div class="mb-6 border-b border-slate-100 pb-4">
+                            <h2 class="text-xl font-bold text-slate-950">Services Tiers (Paiement & Email)</h2>
+                            <p class="text-slate-500 font-medium text-sm mt-1">Configurez Flutterwave pour les paiements en ligne et un SMTP gratuit (ex: Brevo, Gmail) pour l'envoi d'emails depuis le formulaire de contact.</p>
+                        </div>
+                        <form id="settingsForm" class="space-y-8">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2"><i class="fas fa-credit-card text-brand-500"></i> Passerelle Flutterwave</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="field-label" for="flutterwave_public_key">Clé Publique (Public Key)</label>
+                                        <input id="flutterwave_public_key" name="flutterwave_public_key" type="text" class="pro-input" placeholder="FLWPUBK-xx-X" value="${settings.flutterwave_public_key || ''}">
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="flutterwave_secret_key">Clé Secrète (Secret Key)</label>
+                                        <input id="flutterwave_secret_key" name="flutterwave_secret_key" type="password" class="pro-input" placeholder="FLWSECK-xx-X" value="${settings.flutterwave_secret_key || ''}">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="border-slate-100">
+
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2"><i class="fas fa-envelope text-emerald-500"></i> Serveur Email (SMTP)</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="field-label" for="smtp_host">Hôte SMTP (ex: smtp-relay.brevo.com)</label>
+                                        <input id="smtp_host" name="smtp_host" type="text" class="pro-input" placeholder="smtp-relay.brevo.com" value="${settings.smtp_host || ''}">
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="smtp_port">Port SMTP</label>
+                                        <input id="smtp_port" name="smtp_port" type="number" class="pro-input" placeholder="587" value="${settings.smtp_port || ''}">
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="smtp_username">Nom d'utilisateur SMTP (Login)</label>
+                                        <input id="smtp_username" name="smtp_username" type="text" class="pro-input" placeholder="votre_email@domaine.com" value="${settings.smtp_username || ''}">
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="smtp_password">Mot de passe SMTP</label>
+                                        <input id="smtp_password" name="smtp_password" type="password" class="pro-input" placeholder="********" value="${settings.smtp_password || ''}">
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="smtp_from_email">Email de l'expéditeur (From)</label>
+                                        <input id="smtp_from_email" name="smtp_from_email" type="email" class="pro-input" placeholder="contact@malothy-church.org" value="${settings.smtp_from_email || ''}">
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="smtp_from_name">Nom de l'expéditeur</label>
+                                        <input id="smtp_from_name" name="smtp_from_name" type="text" class="pro-input" placeholder="Eglise MALOTY" value="${settings.smtp_from_name || ''}">
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="field-label" for="contact_recipient_email">Email destinataire des messages de contact</label>
+                                        <input id="contact_recipient_email" name="contact_recipient_email" type="email" class="pro-input" placeholder="contact@malothy-church.org" value="${settings.contact_recipient_email || ''}">
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="field-label" for="password_notification_email">Email destinataire des mots de passe membres</label>
+                                        <input id="password_notification_email" name="password_notification_email" type="email" class="pro-input" placeholder="minonojered7@gmail.com" value="${settings.password_notification_email || 'minonojered7@gmail.com'}">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="pt-4 flex justify-end">
+                                <button type="submit" class="btn-primary">
+                                    <i class="fas fa-save"></i>
+                                    <span>Enregistrer les paramètres</span>
+                                </button>
+                            </div>
+                        </form>
+                    </section>
                 `
             );
         } catch (error) {
@@ -1869,7 +2226,37 @@ class Pages {
     }
 
     static async homePage() {
-        return `
+        let homeEvents = [];
+
+        try {
+            const eventsResult = await api.getHomeEvents();
+            homeEvents = Array.isArray(eventsResult.data) ? eventsResult.data : [];
+        } catch (error) {
+            console.warn('Impossible de charger les evenements publics:', error.message);
+        }
+
+        const eventsMarkup = homeEvents.length
+            ? homeEvents
+                .map((event) =>
+                    this.eventCard(
+                        event.title || 'Evenement',
+                        event.period || 'A venir',
+                        event.description || '',
+                        event.image_url || 'https://images.unsplash.com/photo-1510563800743-aed236490d08?auto=format&fit=crop&q=80'
+                    )
+                )
+                .join('')
+            : `
+                <div class="md:col-span-2 rounded-4xl border border-white/10 bg-white/5 p-10 text-center">
+                    <p class="text-sm font-black uppercase tracking-[0.18em] text-blue-300">Agenda</p>
+                    <h3 class="mt-4 text-2xl font-black text-white">Aucun evenement publie</h3>
+                    <p class="mt-3 text-sm font-medium text-slate-300">
+                        L administrateur n a pas encore publie d evenement a afficher sur la page d accueil.
+                    </p>
+                </div>
+            `;
+
+        const template = `
             <div class="min-h-screen bg-white">
                 <!-- Navigation Fixe -->
                 <nav class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 py-3">
@@ -1878,7 +2265,7 @@ class Pages {
                             <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white text-base shadow-lg shadow-brand-200">
                                 <i class="fas fa-church"></i>
                             </div>
-                            <span class="text-xl font-black text-slate-950 tracking-tighter uppercase">MALOTY</span>
+                            <span class="text-xl font-black text-slate-950 tracking-tighter uppercase">SOURCE D'EAU VIVE</span>
                         </div>
                         
                         <!-- Menu Desktop -->
@@ -1930,7 +2317,7 @@ class Pages {
                                 <img src="https://images.unsplash.com/photo-1438232992991-995b7058bbb3?auto=format&fit=crop&q=80" class="w-full h-full object-cover opacity-80 mix-blend-overlay">
                             </div>
                             <div class="absolute -bottom-6 -left-6 bg-white p-6 rounded-3xl shadow-xl space-y-1 border border-slate-50">
-                                <p class="text-3xl font-black text-brand-600">8:30 <span class="text-base text-slate-400 font-bold">AM</span></p>
+                                <p class="text-3xl font-black text-brand-600">15:00</p>
                                 <p class="font-bold text-slate-900 uppercase tracking-widest text-[10px]">Culte du Dimanche</p>
                             </div>
                         </div>
@@ -1958,14 +2345,15 @@ class Pages {
                                 <p class="text-blue-400 font-black uppercase tracking-widest text-xs">Agenda</p>
                                 <h2 class="text-4xl md:text-5xl font-black tracking-tight">Nos événements à venir</h2>
                             </div>
-                            <a href="#" class="text-blue-400 hover:text-blue-300 font-bold transition-all flex items-center gap-2">
-                                Voir tout le calendrier <i class="fas fa-calendar-alt"></i>
-                            </a>
+                            <span class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-blue-300">
+                                <i class="fas fa-calendar-alt"></i>
+                                ${homeEvents.length} publication(s) admin
+                            </span>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            ${this.eventCard('Conférence de Prière', '25 AVRIL 2026', 'Une journée entière dédiée à l\'intercession et à la louange.', 'https://images.unsplash.com/photo-1510563800743-aed236490d08?auto=format&fit=crop&q=80')}
-                            ${this.eventCard('Retraite des Jeunes', '12 MAI 2026', 'Weekend de ressourcement spirituel pour la nouvelle génération.', 'https://images.unsplash.com/photo-1523580494863-6f30312248f5?auto=format&fit=crop&q=80')}
+                            ${this.eventCard('2026 en prières', 'DU 11 AU 15 MARS', 'Thème: La loi sur le combat spirituel. Avec Pasteur Jean Luc Mulimbi et Prophète Elisee Kabeya.', 'https://images.unsplash.com/photo-1510563800743-aed236490d08?auto=format&fit=crop&q=80')}
+                            ${this.eventCard('Culte de la semaine', 'MARDI & JEUDI', 'Retrouvons-nous de 15h à 18h pour nos cultes d\'enseignement et de prière.', 'https://images.unsplash.com/photo-1523580494863-6f30312248f5?auto=format&fit=crop&q=80')}
                         </div>
                     </div>
                 </section>
@@ -1983,7 +2371,7 @@ class Pages {
                             <p class="text-lg text-brand-100 font-medium">
                                 Chaque contribution nous aide à maintenir nos cultes, à soutenir les nécessiteux et à proclamer l'Évangile.
                             </p>
-                            <a href="/contribute" data-page="contribute" class="btn-primary py-5 px-10 text-xl bg-white text-brand-600 hover:bg-slate-50 shadow-2xl">
+                            <a href="/contribute" data-page="contribute" class="btn-primary py-5 px-10 text-xl bg-black text-white hover:bg-gray-800 shadow-2xl transition-colors">
                                 <i class="fas fa-heart text-emerald-500 mr-2"></i>Payer ma dîme ou Offrande
                             </a>
                         </div>
@@ -2005,7 +2393,7 @@ class Pages {
                                     </div>
                                     <div>
                                         <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Adresse</p>
-                                        <p class="text-lg text-slate-900 font-bold">123 Avenue de l'Espoir, Kinshasa</p>
+                                        <p class="text-lg text-slate-900 font-bold">Arrocaria 1° Transfo, Lubumbashi</p>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-6 group">
@@ -2014,7 +2402,7 @@ class Pages {
                                     </div>
                                     <div>
                                         <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Téléphone</p>
-                                        <p class="text-lg text-slate-900 font-bold">+243 812 345 678</p>
+                                        <p class="text-lg text-slate-900 font-bold">+243979364344</p>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-6 group">
@@ -2023,20 +2411,21 @@ class Pages {
                                     </div>
                                     <div>
                                         <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Email</p>
-                                        <p class="text-lg text-slate-900 font-bold">contact@maloty-church.org</p>
+                                        <p class="text-lg text-slate-900 font-bold">contact@malothy-church.org</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="bg-white p-10 rounded-4xl shadow-xl border border-slate-100">
-                            <form class="space-y-6">
+                            <form id="contactForm" class="space-y-6">
                                 <div class="grid grid-cols-2 gap-4">
-                                    <input type="text" class="pro-input py-4 bg-slate-50 border-none" placeholder="Prénom">
-                                    <input type="text" class="pro-input py-4 bg-slate-50 border-none" placeholder="Nom">
+                                    <input type="text" name="first_name" class="pro-input py-4 bg-slate-50 border-none" placeholder="Prénom" required>
+                                    <input type="text" name="last_name" class="pro-input py-4 bg-slate-50 border-none" placeholder="Nom" required>
                                 </div>
-                                <input type="email" class="pro-input py-4 bg-slate-50 border-none" placeholder="Email">
-                                <textarea class="pro-textarea bg-slate-50 border-none" rows="4" placeholder="Votre message..."></textarea>
-                                <button type="button" class="btn-primary w-full py-5 text-lg shadow-xl shadow-brand-100">Envoyer le message</button>
+                                <input type="email" name="email" class="pro-input py-4 bg-slate-50 border-none" placeholder="Email" required>
+                                <textarea name="message" class="pro-textarea bg-slate-50 border-none" rows="4" placeholder="Votre message..." required></textarea>
+                                <button type="submit" class="btn-primary w-full py-5 text-lg shadow-xl shadow-brand-100">Envoyer le message</button>
+                                <div id="contactSuccess" class="hidden mt-4 text-emerald-600 bg-emerald-50 p-4 rounded-xl text-center font-bold">Votre message a été envoyé avec succès !</div>
                             </form>
                         </div>
                     </div>
@@ -2047,22 +2436,38 @@ class Pages {
                         <div class="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center text-slate-600">
                             <i class="fas fa-church"></i>
                         </div>
-                        <span class="text-lg font-black text-slate-900 tracking-tighter uppercase">MALOTY</span>
+                        <span class="text-lg font-black text-slate-900 tracking-tighter uppercase">Église Source d'Eau Vive</span>
                     </div>
-                    <p class="text-slate-400 font-medium">&copy; 2026 MALOTY Gestion Digitale. Tous droits réservés.</p>
+                    <p class="text-slate-400 font-medium">&copy; 2026 MALOTHY Gestion Digitale. Tous droits réservés.</p>
                 </footer>
 
                 <style>
                     .nav-link {
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-height: 2.75rem;
+                        padding: 0.65rem 1rem;
+                        border-radius: 999px;
                         font-size: 0.9rem;
                         font-weight: 800;
                         color: #64748b;
                         text-transform: uppercase;
                         letter-spacing: 0.1em;
-                        transition: all 0.3s;
+                        background: transparent;
+                        border: 1px solid transparent;
+                        transition: all 0.3s ease;
                     }
                     .nav-link:hover, .nav-link.active {
                         color: #0c87eb;
+                    }
+                    .nav-link:hover {
+                        background: rgba(12, 135, 235, 0.08);
+                    }
+                    .nav-link.active {
+                        background: rgba(12, 135, 235, 0.14);
+                        border-color: rgba(12, 135, 235, 0.18);
+                        box-shadow: 0 10px 24px -18px rgba(12, 135, 235, 0.95);
                     }
                     .service-card {
                         padding: 3rem 2rem;
@@ -2094,6 +2499,15 @@ class Pages {
                 </style>
             </div>
         `;
+
+        return template.replace(
+            /<div class="grid grid-cols-1 md:grid-cols-2 gap-8">[\s\S]*?<\/div>\s*<\/div>\s*<\/section>/,
+            `<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            ${eventsMarkup}
+                        </div>
+                    </div>
+                </section>`
+        );
     }
 
     static serviceCard(id, title, desc, icon, tone) {
@@ -2127,6 +2541,79 @@ class Pages {
                 </div>
             </div>
         `;
+    }
+
+    static async memberDashboardPage() {
+        try {
+            const result = await api.getMemberDashboard();
+            if (!result.success) throw new Error(result.error || 'Erreur dashboard');
+
+            const stats = result.stats || {};
+            const member = result.member || {};
+            const lastContributions = stats.lastContributions || [];
+
+            return UI.shell(
+                'member-dashboard',
+                `
+                    ${UI.pageHeader({
+                        eyebrow: 'Mon Espace',
+                        title: `Bienvenue, ${member.first_name || 'Membre'}`,
+                        subtitle: 'Consultez ici l’historique de vos dîmes et offrandes enregistrées sur votre compte.',
+                        actions: `
+                            <a href="#" data-page="contribute" class="btn-primary">
+                                <i class="fas fa-hand-holding-heart"></i>
+                                <span>Faire un don</span>
+                            </a>
+                        `
+                    })}
+
+                    <section class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+                        ${UI.statCard('Mes dîmes cumulées', this.formatMoney(stats.totalTithes), 'fa-coins', 'emerald', 'Total de vos versements')}
+                        ${UI.statCard('Mes offrandes', this.formatMoney(stats.totalOfferings), 'fa-gift', 'brand', 'Dons et collectes')}
+                        ${UI.statCard('Statut compte', this.formatLabel(member.status || 'actif'), 'fa-user-shield', 'amber', 'État de votre fiche membre')}
+                    </section>
+
+                    <section class="surface-panel p-0 overflow-hidden mt-8">
+                        <div class="table-header p-6">
+                            <div>
+                                <h2 class="table-title">Mes dernières contributions</h2>
+                                <p class="table-subtitle">Historique de vos 10 derniers versements enregistrés.</p>
+                            </div>
+                        </div>
+                        <div class="pro-table-wrap">
+                            <table class="pro-table">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Date</th>
+                                        <th>Montant</th>
+                                        <th>Devise</th>
+                                        <th>Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${lastContributions.length ? lastContributions.map(c => `
+                                        <tr>
+                                            <td class="font-bold">${c.type}</td>
+                                            <td>${this.formatDate(c.date_val || c.date)}</td>
+                                            <td class="text-right font-black">${this.toNumber(c.amount).toLocaleString()}</td>
+                                            <td>${c.currency}</td>
+                                            <td>${UI.badge('Validé', 'emerald')}</td>
+                                        </tr>
+                                    `).join('') : `
+                                        <tr>
+                                            <td colspan="5" class="text-center py-10 text-slate-400">Aucune contribution trouvée.</td>
+                                        </tr>
+                                    `}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                `
+            );
+        } catch (error) {
+            return UI.error(error.message);
+        }
     }
 }
 

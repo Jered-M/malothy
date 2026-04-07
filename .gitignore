@@ -1,0 +1,17 @@
+backend/error_debug.log
+php-error.log
+php.log
+router.log
+main-router.log
+
+tmp/*
+!tmp/.gitkeep
+
+uploads/members/*
+!uploads/members/.gitkeep
+
+uploads/home-events/*
+!uploads/home-events/.gitkeep
+
+uploads/expenses/*
+!uploads/expenses/.gitkeep

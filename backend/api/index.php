@@ -122,7 +122,12 @@ if ($id && $action) {
 }
 
 if (!$methodToCall || !method_exists($controller, $methodToCall)) {
-    json_error("Action '{$methodToCall}' non disponible pour '{$resourceName}'", 405);
+    // Essayer sans le préfixe (pour les actions personnalisées comme approve, reject)
+    if ($action && method_exists($controller, $action)) {
+        $methodToCall = $action;
+    } else {
+        json_error("Action '{$methodToCall}' non disponible pour '{$resourceName}'", 405);
+    }
 }
 
 // Call the method with params

@@ -1,4 +1,4 @@
-﻿// Fonction de dÃ©connexion globale (accessible partout)
+// Fonction de dÃ©connexion globale (accessible partout)
 window.logout = async function() {
     console.log('--- DÃ©connexion Initiale ---');
     try {
@@ -58,11 +58,12 @@ class App {
             if (link) {
                 e.preventDefault();
                 const page = link.getAttribute('data-page');
+                const memberId = link.getAttribute('data-edit-member');
                 
                 // Si on va au dashboard, on nettoie l'URL (racine)
                 const url = page === 'dashboard' ? '/' : `/${page}`;
-                history.pushState({ page }, '', url);
-                this.navigate(page);
+                history.pushState({ page, memberId }, '', url);
+                this.navigate(page, { memberId });
                 
                 // Fermer la sidebar aprÃ¨s clic sur un lien mobile
                 this.setSidebarOpen(false);
@@ -80,7 +81,8 @@ class App {
         // GÃ©rer le bouton retour du navigateur
         window.addEventListener('popstate', (e) => {
             const page = e.state ? e.state.page : this.getPageFromUrl();
-            this.navigate(page);
+            const memberId = e.state ? e.state.memberId : null;
+            this.navigate(page, { memberId });
         });
 
         // Afficher la page initiale basÃ©e sur l'URL
@@ -148,7 +150,7 @@ class App {
         return normalized;
     }
 
-    async navigate(page) {
+    async navigate(page, params = {}) {
         try {
             // VÃ©rifier l'authentification
             if (page !== 'login' && page !== 'contribute' && page !== 'home' && !this.currentUser) {
@@ -166,9 +168,11 @@ class App {
             if (role.includes('adm')) role = 'admin';
             else if (role.includes('sorier') || role.startsWith('tr')) role = 'tresorier';
             else if (role.includes('ecretaire') || role.startsWith('sec')) role = 'secretaire';
+            else if (role.includes('membre') || role.startsWith('mem')) role = 'member';
 
             const perms = {
                 'dashboard': ['admin', 'tresorier', 'secretaire'],
+                'member-dashboard': ['admin', 'member'],
                 'members': ['admin', 'secretaire'],
                 'members-form': ['admin', 'secretaire'],
                 'tithes': ['admin', 'tresorier'],
@@ -176,8 +180,8 @@ class App {
                 'offerings': ['admin', 'tresorier'],
                 'offering-form': ['admin', 'tresorier'],
                 'finance': ['admin', 'tresorier'],
-                'expenses': ['admin', 'tresorier'],
-                'expense-form': ['admin', 'tresorier'],
+                'expenses': ['admin', 'tresorier', 'secretaire'],
+                'expense-form': ['admin', 'tresorier', 'secretaire'],
                 'reports': ['admin', 'tresorier'],
                 'audit-logs': ['admin'],
                 'settings': ['admin']
@@ -206,11 +210,21 @@ class App {
 
                 case 'home':
                     app.innerHTML = await Pages.homePage();
+                    this.attachHomeEvents();
                     break;
 
                 case 'dashboard':
+                    if (role === 'member') {
+                        this.navigate('member-dashboard');
+                        history.replaceState({ page: 'member-dashboard' }, '', '/member-dashboard');
+                        return;
+                    }
                     app.innerHTML = await Pages.dashboardPage();
                     this.initDashboard();
+                    break;
+
+                case 'member-dashboard':
+                    app.innerHTML = await Pages.memberDashboardPage();
                     break;
 
                 case 'members':
@@ -219,7 +233,7 @@ class App {
                     break;
 
                 case 'members-form':
-                    app.innerHTML = await Pages.memberFormPage();
+                    app.innerHTML = await Pages.memberFormPage(params.memberId);
                     this.attachMemberEvents();
                     break;
 
@@ -254,6 +268,7 @@ class App {
 
                 case 'reports':
                     app.innerHTML = await Pages.reportsPage();
+                    this.attachReportEvents();
                     break;
 
                 case 'audit-logs':
@@ -305,6 +320,97 @@ class App {
     }
 
 
+    attachHomeEvents() {
+        const navLinks = Array.from(document.querySelectorAll('.nav-link[href^="#"]'));
+        if (!navLinks.length) return;
+
+        const sections = navLinks
+            .map((link) => document.querySelector(link.getAttribute('href')))
+            .filter(Boolean);
+
+        const setActiveLink = (targetId) => {
+            navLinks.forEach((link) => {
+                const isActive = link.getAttribute('href') === `#${targetId}`;
+                link.classList.toggle('active', isActive);
+                if (isActive) {
+                    link.setAttribute('aria-current', 'page');
+                } else {
+                    link.removeAttribute('aria-current');
+                }
+            });
+        };
+
+        navLinks.forEach((link) => {
+            link.addEventListener('click', () => {
+                const targetId = (link.getAttribute('href') || '').replace('#', '');
+                if (targetId) {
+                    setActiveLink(targetId);
+                }
+            });
+        });
+
+        const currentHash = window.location.hash.replace('#', '');
+        if (currentHash) {
+            setActiveLink(currentHash);
+        } else {
+            setActiveLink('hero');
+        }
+
+        if ('IntersectionObserver' in window && sections.length) {
+            const observer = new IntersectionObserver(
+                (entries) => {
+                    const visibleEntry = entries
+                        .filter((entry) => entry.isIntersecting)
+                        .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
+
+                    if (visibleEntry?.target?.id) {
+                        setActiveLink(visibleEntry.target.id);
+                    }
+                },
+                {
+                    rootMargin: '-35% 0px -45% 0px',
+                    threshold: [0.2, 0.45, 0.7]
+                }
+            );
+
+            sections.forEach((section) => observer.observe(section));
+        }
+
+        const contactForm = document.getElementById('contactForm');
+        if (contactForm) {
+            contactForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(contactForm);
+                const data = Object.fromEntries(formData.entries());
+                const submitBtn = contactForm.querySelector('button[type="submit"]');
+                const successMsg = document.getElementById('contactSuccess');
+                
+                try {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = 'Envoi en cours... <i class="fas fa-spinner fa-spin"></i>';
+                    
+                    const result = await api.request('POST', '/contact', data);
+                    if (result.success) {
+                        if (successMsg) {
+                            successMsg.classList.remove('hidden');
+                        }
+                        contactForm.reset();
+                        if (successMsg) {
+                            setTimeout(() => successMsg.classList.add('hidden'), 5000);
+                        }
+                    } else {
+                        alert(result.error || 'Erreur lors de l\'envoi du message');
+                    }
+                } catch (err) {
+                    alert('Erreur: ' + err.message);
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Envoyer le message';
+                }
+            };
+        }
+    }
+
     attachLoginEvents() {
         const loginForm = document.getElementById('loginForm');
         if (loginForm) {
@@ -328,8 +434,12 @@ class App {
                     if (result.success) {
                         this.currentUser = result.user;
                         console.log('Current User now set to:', this.currentUser);
-                        history.replaceState({ page: 'dashboard' }, '', '/');
-                        this.navigate('dashboard');
+                        
+                        const role = UI.normalizeRole(this.currentUser.role);
+                        const nextPage = role === 'member' ? 'member-dashboard' : 'dashboard';
+                        
+                        history.replaceState({ page: nextPage }, '', '/' + (nextPage === 'dashboard' ? '' : nextPage));
+                        this.navigate(nextPage);
                     } else {
                         alert(result.error || 'Identifiants invalides');
                     }
@@ -420,10 +530,14 @@ class App {
                 }
                 
                 try {
-                    const result = await api.post('/members', data);
+                    const isEdit = !!data.id;
+                    const method = isEdit ? 'PUT' : 'POST';
+                    const endpoint = isEdit ? `/members/${data.id}` : '/members';
+                    
+                    const result = await api.request(method, endpoint, data);
                     
                     if (result.success) {
-                        const memberId = result.id;
+                        const memberId = isEdit ? data.id : result.id;
                         
                         // Si une photo est fournie, l'uploader
                         if (photoFile && photoFile.size > 0) {
@@ -432,7 +546,21 @@ class App {
                             await api.request('POST', `/members/${memberId}/photo`, photoFormData);
                         }
                         
-                        alert('Membre enregistrÃ© avec succÃ¨s !');
+                        let msg = 'Membre enregistré avec succès !';
+                        if (result.account) {
+                            msg += `\n\nCompte membre créé :\nIdentifiant : ${result.account.username}\nMot de passe : ${result.account.password}`;
+                        }
+                        if (result.password_notification?.email) {
+                            if (result.password_notification.sent) {
+                                msg += `\n\nNotification mot de passe envoyee a : ${result.password_notification.email}`;
+                            } else {
+                                msg += `\n\nNotification mot de passe non envoyee a : ${result.password_notification.email}`;
+                                if (result.password_notification.warning) {
+                                    msg += `\nDetails : ${result.password_notification.warning}`;
+                                }
+                            }
+                        }
+                        alert(msg);
                         this.navigate('members');
                     } else {
                         alert(result.error || 'Erreur lors de l\'enregistrement');
@@ -498,6 +626,30 @@ class App {
         dateFilter.addEventListener('change', applyFilters);
         statusFilter.addEventListener('change', applyFilters);
         applyFilters();
+
+        // Gestion de la suppression d'un membre
+        const tableBody = document.querySelector('.pro-table tbody');
+        if (tableBody) {
+            tableBody.onclick = async (e) => {
+                const deleteBtn = e.target.closest('[data-delete-member]');
+                if (deleteBtn) {
+                    const memberId = deleteBtn.dataset.deleteMember;
+                    const memberName = deleteBtn.dataset.memberName;
+                    
+                    if (confirm(`Êtes-vous sûr de vouloir supprimer le membre "${memberName}" ?\n\nCette action est irréversible et supprimera également son compte utilisateur associé.`)) {
+                        try {
+                            const result = await api.delete(`/members/${memberId}`);
+                            if (result.success) {
+                                alert('Membre supprimé avec succès.');
+                                this.navigate('members');
+                            }
+                        } catch (error) {
+                            alert('Erreur lors de la suppression : ' + error.message);
+                        }
+                    }
+                }
+            };
+        }
     }
 
     attachFinanceEntryEvents(type) {
@@ -542,13 +694,267 @@ class App {
     }
 
     attachSettingsEvents() {
+        const app = document.querySelector('#app');
+        const homeEventForm = document.querySelector('#homeEventForm');
+        const homeEventIndex = document.querySelector('#homeEventIndex');
+        const homeEventsPayload = document.querySelector('#homeEventsPayload');
+        const homeEventReset = document.querySelector('#homeEventReset');
+        const homeEventSubmitLabel = document.querySelector('#homeEventSubmitLabel');
+        const homeEventImageUpload = document.querySelector('#homeEventImageUpload');
+
+        const readHomeEvents = () => {
+            if (!homeEventsPayload || !homeEventsPayload.value) {
+                return [];
+            }
+
+            try {
+                const parsed = JSON.parse(decodeURIComponent(homeEventsPayload.value));
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (error) {
+                console.warn('Impossible de decoder les evenements admin:', error);
+                return [];
+            }
+        };
+
+        const writeHomeEvents = (events) => {
+            if (!homeEventsPayload) return;
+            homeEventsPayload.value = encodeURIComponent(JSON.stringify(events || []));
+        };
+
+        const resetHomeEventForm = () => {
+            if (!homeEventForm) return;
+            homeEventForm.reset();
+            if (homeEventIndex) {
+                homeEventIndex.value = '';
+            }
+            if (homeEventSubmitLabel) {
+                homeEventSubmitLabel.textContent = 'Publier l evenement';
+            }
+        };
+
+        const fillHomeEventForm = (event, index) => {
+            if (!homeEventForm || !event) return;
+
+            homeEventForm.elements.title.value = event.title || '';
+            homeEventForm.elements.period.value = event.period || '';
+            homeEventForm.elements.description.value = event.description || '';
+            homeEventForm.elements.image_url.value = event.image_url || '';
+            if (homeEventImageUpload) {
+                homeEventImageUpload.value = '';
+            }
+
+            if (homeEventIndex) {
+                homeEventIndex.value = String(index);
+            }
+            if (homeEventSubmitLabel) {
+                homeEventSubmitLabel.textContent = 'Mettre a jour l evenement';
+            }
+
+            homeEventForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+
+        if (homeEventReset) {
+            homeEventReset.onclick = () => resetHomeEventForm();
+        }
+
+        if (homeEventForm) {
+            homeEventForm.onsubmit = async (e) => {
+                e.preventDefault();
+
+                const formData = new FormData(homeEventForm);
+                const title = String(formData.get('title') || '').trim();
+                const period = String(formData.get('period') || '').trim();
+                const description = String(formData.get('description') || '').trim();
+                let image_url = String(formData.get('image_url') || '').trim();
+                const imageFile = formData.get('image_file');
+
+                if (!title || !period || !description) {
+                    alert('Titre, periode et description sont obligatoires.');
+                    return;
+                }
+
+                try {
+                    if (imageFile instanceof File && imageFile.size > 0) {
+                        if (homeEventSubmitLabel) {
+                            homeEventSubmitLabel.textContent = 'Upload image en cours...';
+                        }
+
+                        const uploadResult = await api.uploadHomeEventImage(imageFile);
+                        if (!uploadResult.success) {
+                            alert(uploadResult.error || 'Erreur lors de l upload de l image');
+                            return;
+                        }
+
+                        image_url =
+                            uploadResult.data?.url ||
+                            uploadResult.data?.path ||
+                            image_url;
+                    }
+                } catch (error) {
+                    alert(error.message || 'Erreur lors de l upload de l image');
+                    if (homeEventSubmitLabel) {
+                        homeEventSubmitLabel.textContent =
+                            homeEventIndex && homeEventIndex.value !== ''
+                                ? 'Mettre a jour l evenement'
+                                : 'Publier l evenement';
+                    }
+                    return;
+                }
+
+                const currentEvents = readHomeEvents();
+                const nextEvent = { title, period, description, image_url };
+                const editIndex = homeEventIndex && homeEventIndex.value !== ''
+                    ? Number(homeEventIndex.value)
+                    : -1;
+
+                let nextEvents = [...currentEvents];
+
+                if (Number.isInteger(editIndex) && editIndex >= 0 && editIndex < nextEvents.length) {
+                    nextEvents[editIndex] = nextEvent;
+                } else {
+                    nextEvents.unshift(nextEvent);
+                }
+
+                try {
+                    if (homeEventSubmitLabel) {
+                        homeEventSubmitLabel.textContent =
+                            editIndex >= 0 ? 'Mise a jour en cours...' : 'Publication en cours...';
+                    }
+
+                    const result = await api.saveHomeEvents(nextEvents);
+                    if (!result.success) {
+                        alert(result.error || 'Erreur lors de la publication');
+                        return;
+                    }
+
+                    writeHomeEvents(Array.isArray(result.data) ? result.data : nextEvents);
+                    alert(editIndex >= 0 ? 'Evenement mis a jour.' : 'Evenement publie.');
+                    this.navigate('settings');
+                } catch (error) {
+                    alert(error.message || 'Erreur lors de la publication');
+                } finally {
+                    if (homeEventSubmitLabel) {
+                        homeEventSubmitLabel.textContent =
+                            homeEventIndex && homeEventIndex.value !== ''
+                                ? 'Mettre a jour l evenement'
+                                : 'Publier l evenement';
+                    }
+                }
+            };
+        }
+
+        if (app) {
+            app.onclick = async (e) => {
+                const editTrigger = e.target.closest('[data-edit-home-event]');
+                if (editTrigger) {
+                    e.preventDefault();
+                    const index = Number(editTrigger.dataset.editHomeEvent);
+                    const events = readHomeEvents();
+                    fillHomeEventForm(events[index], index);
+                    return;
+                }
+
+                const deleteTrigger = e.target.closest('[data-delete-home-event]');
+                if (!deleteTrigger) return;
+
+                e.preventDefault();
+
+                const index = Number(deleteTrigger.dataset.deleteHomeEvent);
+                const events = readHomeEvents();
+                if (!Number.isInteger(index) || index < 0 || index >= events.length) {
+                    return;
+                }
+
+                if (!confirm('Supprimer cet evenement de la page accueil ?')) {
+                    return;
+                }
+
+                const nextEvents = events.filter((_, eventIndex) => eventIndex !== index);
+
+                try {
+                    const result = await api.saveHomeEvents(nextEvents);
+                    if (!result.success) {
+                        alert(result.error || 'Erreur lors de la suppression');
+                        return;
+                    }
+
+                    writeHomeEvents(Array.isArray(result.data) ? result.data : nextEvents);
+                    alert('Evenement supprime.');
+                    this.navigate('settings');
+                } catch (error) {
+                    alert(error.message || 'Erreur lors de la suppression');
+                }
+            };
+        }
+
         const profileForm = document.querySelector('#profileForm');
         if (profileForm) {
             profileForm.onsubmit = async (e) => {
                 e.preventDefault();
-                alert('Profil mis Ã  jour (simulation)');
+                alert('Profil mis à jour (simulation)');
             };
         }
+
+        const settingsForm = document.querySelector('#settingsForm');
+        if (settingsForm) {
+            settingsForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(settingsForm);
+                const data = Object.fromEntries(formData.entries());
+                
+                try {
+                    const result = await api.request('POST', '/settings', data);
+                    if (result.success) {
+                        alert('Paramètres enregistrés avec succès !');
+                    } else {
+                        alert(result.error || 'Erreur lors de l\'enregistrement');
+                    }
+                } catch (error) {
+                    alert('Erreur: ' + error.message);
+                }
+            };
+        }
+    }
+
+    attachReportEvents() {
+        const container = document.querySelector('#app');
+        if (!container) return;
+
+        container.onclick = async (e) => {
+            const trigger = e.target.closest('[data-action]');
+            if (!trigger) return;
+
+            e.preventDefault();
+
+            const action = trigger.dataset.action || '';
+            const reportType = trigger.dataset.reportType || '';
+            const year = String(new Date().getFullYear());
+
+            try {
+                trigger.classList.add('pointer-events-none', 'opacity-70');
+
+                switch (action) {
+                    case 'export-pdf':
+                        await api.exportPDF(reportType || 'balance', year);
+                        break;
+                    case 'export-csv':
+                        await api.exportCSV(reportType || 'members', year);
+                        break;
+                    case 'export-json':
+                        await api.exportJSON();
+                        break;
+                    case 'export-sql':
+                        await api.exportSQL();
+                        break;
+                    default:
+                        throw new Error(`Action de rapport inconnue: ${action}`);
+                }
+            } catch (error) {
+                alert(error.message || 'Le telechargement a echoue.');
+            } finally {
+                trigger.classList.remove('pointer-events-none', 'opacity-70');
+            }
+        };
     }
 
     attachExpenseActionEvents() {

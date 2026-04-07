@@ -26,8 +26,9 @@ class UI {
         if (role.includes('adm')) return 'admin';
         if (role.includes('sorier') || role.startsWith('tr')) return 'tresorier';
         if (role.includes('ecretaire') || role.startsWith('sec')) return 'secretaire';
+        if (role.includes('membre') || role.startsWith('mem')) return 'member';
         
-        return 'secretaire'; // Fallback
+        return 'member'; // Default for safety
     }
 
     static roleMeta(role) {
@@ -47,10 +48,15 @@ class UI {
                 label: 'Secretaire',
                 tone: 'amber',
                 copy: 'Registre membres et suivi operationnel'
+            },
+            member: {
+                label: 'Membre',
+                tone: 'slate',
+                copy: 'Mon espace personnel et mes dons'
             }
         };
 
-        return meta[normalized] || meta.secretaire;
+        return meta[normalized] || meta.member;
     }
 
     static initials(...parts) {
@@ -103,13 +109,15 @@ class UI {
         const roleMeta = this.roleMeta(user.role);
         const links = [
             { id: 'dashboard', icon: 'fa-chart-line', label: 'Accueil', roles: ['admin', 'tresorier', 'secretaire'] },
+            { id: 'member-dashboard', icon: 'fa-user-circle', label: 'Mon Espace', roles: ['admin', 'member'] },
             { id: 'members', icon: 'fa-users', label: 'Membres', roles: ['admin', 'secretaire'] },
             { id: 'finance', icon: 'fa-wallet', label: 'Caisse', roles: ['admin', 'tresorier'] },
-            { id: 'expenses', icon: 'fa-receipt', label: 'Dépenses', roles: ['admin', 'tresorier'] },
+            { id: 'expenses', icon: 'fa-receipt', label: 'Dépenses', roles: ['admin', 'tresorier', 'secretaire'] },
             { id: 'reports', icon: 'fa-file-pdf', label: 'Rapports', roles: ['admin', 'tresorier'] },
+            { id: 'contribute', icon: 'fa-hand-holding-heart', label: 'Donner en ligne', roles: ['member'] },
             { id: 'audit-logs', icon: 'fa-clock-rotate-left', label: 'Activité', roles: ['admin'] },
             { id: 'settings', icon: 'fa-cog', label: 'Accès', roles: ['admin'] }
-        ].filter((link) => link.roles.includes(this.normalizeRole(user.role)));
+        ].filter((link) => link.roles.includes(user.role));
 
         return `
             <aside class="app-sidebar shadow-2xl">

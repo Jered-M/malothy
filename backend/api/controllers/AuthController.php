@@ -37,6 +37,7 @@ class AuthController {
 
         // Créer une session
         $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user_email'] = $user['email'];
         $_SESSION['user_role'] = strtolower($user['role']);
         $_SESSION['user_name'] = $user['name'];
         

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * API ReportController
  * Handles Financial Reports and Data Exports (PDF/JSON/CSV)
@@ -33,7 +33,7 @@ class ReportController {
             $income_tithes = $this->titheModel->getYearlyTotal($year);
             $income_offerings = $this->offeringModel->getYearlyTotal($year);
             $expenses = $this->expenseModel->getYearlyTotal($year);
-            $period = "Année $year";
+            $period = "AnnÃ©e $year";
         } else {
             $income_tithes = $this->titheModel->getMonthlyTotal($year, $month);
             $income_offerings = $this->offeringModel->getMonthlyTotal($year, $month);
@@ -64,8 +64,8 @@ class ReportController {
      */
     public function export_json() {
         $user = get_authenticated_user();
-        if ($user['role'] !== 'admin') {
-            json_error('Seul un administrateur peut exporter la base complète', 403);
+        if (strtolower($user['role']) !== 'admin' && strtolower($user['role']) !== 'administrateur') {
+            json_error('Seul un administrateur peut exporter la base complÃ¨te', 403);
         }
 
         $db = Database::getInstance()->getConnection();
@@ -111,8 +111,9 @@ class ReportController {
      */
     public function export_pdf() {
         $user = get_authenticated_user();
-        if ($user['role'] !== 'admin') {
-            json_error('Seul un administrateur peut générer des PDF', 403);
+        $role = strtolower($user['role'] ?? '');
+        if ($role !== 'admin' && $role !== 'administrateur') {
+            json_error('Seul un administrateur peut gÃ©nÃ©rer des PDF', 403);
         }
 
         $type = $_GET['type'] ?? 'balance';
@@ -151,7 +152,7 @@ class ReportController {
         }
 
         $html .= '<p style="margin-top: 40px; font-size: 10px; color: #999;">
-                    Généré par MALOTY - ' . date('d/m/Y H:i') . '
+                    GÃ©nÃ©rÃ© par MALOTY - ' . date('d/m/Y H:i') . '
                   </p>
             </body></html>';
 
@@ -198,7 +199,8 @@ class ReportController {
      */
     public function export_sql() {
         $user = get_authenticated_user();
-        if ($user['role'] !== 'admin') {
+        $role = strtolower($user['role'] ?? '');
+        if ($role !== 'admin' && $role !== 'administrateur') {
             json_error('Seul un administrateur peut exporter la base SQL', 403);
         }
 
@@ -222,15 +224,19 @@ class ReportController {
 
     // ===================== CSV Export Helpers =====================
 
+    private function writeCsvRow($output, array $row, string $delimiter = ';') {
+        fputcsv($output, $row, $delimiter, '"', '\\');
+    }
+
     private function exportMembersCSV($output) {
-        fputcsv($output, ['ID', 'Prénom', 'Nom', 'Email', 'Téléphone', 'Adresse', 'Département', 'Date Adhésion', 'Statut']);
+        $this->writeCsvRow($output, ['ID', 'Prenom', 'Nom', 'Email', 'Telephone', 'Adresse', 'Departement', 'Date Adhesion', 'Statut']);
         
         require_once PROJECT_ROOT . '/backend/models/Member.php';
         $memberModel = new Member();
-        $members = $memberModel->getAll();
+        $members = $memberModel->findAll();
 
         foreach ($members as $m) {
-            fputcsv($output, [
+            $this->writeCsvRow($output, [
                 $m['id'],
                 $m['first_name'] ?? '',
                 $m['last_name'] ?? '',
@@ -245,7 +251,7 @@ class ReportController {
     }
 
     private function exportTithesCSV($output, $year) {
-        fputcsv($output, ['ID', 'Membre', 'Montant', 'Date', 'Enregistré par', 'Commentaire']);
+        $this->writeCsvRow($output, ['ID', 'Membre', 'Montant', 'Date', 'Enregistre par', 'Commentaire']);
         
         if ($year === 'all') {
             $tithes = $this->titheModel->search();
@@ -254,19 +260,19 @@ class ReportController {
         }
 
         foreach ($tithes as $t) {
-            fputcsv($output, [
+            $this->writeCsvRow($output, [
                 $t['id'],
                 ($t['first_name'] ?? '') . ' ' . ($t['last_name'] ?? ''),
                 (float)$t['amount'],
                 $t['tithe_date'] ?? '',
                 $t['recorded_by_id'] ?? '',
                 $t['notes'] ?? ''
-            ], ';');
+            ]);
         }
     }
 
     private function exportOfferingsCSV($output, $year) {
-        fputcsv($output, ['ID', 'Type', 'Montant', 'Date', 'Culte/Événement', 'Commentaire']);
+        $this->writeCsvRow($output, ['ID', 'Type', 'Montant', 'Date', 'Culte/Evenement', 'Commentaire']);
         
         if ($year === 'all') {
             $offerings = $this->offeringModel->search();
@@ -275,19 +281,19 @@ class ReportController {
         }
 
         foreach ($offerings as $o) {
-            fputcsv($output, [
+            $this->writeCsvRow($output, [
                 $o['id'],
                 $o['type'] ?? '',
                 (float)$o['amount'],
                 $o['offering_date'] ?? '',
                 $o['event'] ?? '',
                 $o['notes'] ?? ''
-            ], ';');
+            ]);
         }
     }
 
     private function exportExpensesCSV($output, $year) {
-        fputcsv($output, ['ID', 'Catégorie', 'Montant', 'Date', 'Description', 'Statut', 'Approuvé par']);
+        $this->writeCsvRow($output, ['ID', 'Categorie', 'Montant', 'Date', 'Description', 'Statut', 'Approuve par']);
         
         if ($year === 'all') {
             $expenses = $this->expenseModel->search();
@@ -296,7 +302,7 @@ class ReportController {
         }
 
         foreach ($expenses as $e) {
-            fputcsv($output, [
+            $this->writeCsvRow($output, [
                 $e['id'],
                 $e['category'] ?? '',
                 (float)$e['amount'],
@@ -304,7 +310,7 @@ class ReportController {
                 $e['description'] ?? '',
                 $e['status'] ?? 'pending',
                 $e['approved_by_id'] ?? ''
-            ], ';');
+            ]);
         }
     }
 
@@ -315,7 +321,7 @@ class ReportController {
             $income_tithes = $this->titheModel->getYearlyTotal($year);
             $income_offerings = $this->offeringModel->getYearlyTotal($year);
             $expenses = $this->expenseModel->getYearlyTotal($year);
-            $period = "Année $year";
+            $period = "AnnÃ©e $year";
         } else {
             $income_tithes = $this->titheModel->getMonthlyTotal($year, $month);
             $income_offerings = $this->offeringModel->getMonthlyTotal($year, $month);
@@ -327,13 +333,13 @@ class ReportController {
         $balance = $total_income - $expenses;
 
         return '<h1>MALOTY - Bilan Financier</h1>
-                <p>Période: ' . htmlspecialchars($period) . '</p>
+                <p>PÃ©riode: ' . htmlspecialchars($period) . '</p>
                 <table>
                     <tr><th>Type</th><th>Montant (CDF)</th></tr>
-                    <tr><td>Dîmes</td><td>' . number_format($income_tithes, 0, ',', ' ') . '</td></tr>
+                    <tr><td>DÃ®mes</td><td>' . number_format($income_tithes, 0, ',', ' ') . '</td></tr>
                     <tr><td>Offrandes</td><td>' . number_format($income_offerings, 0, ',', ' ') . '</td></tr>
-                    <tr class="total-row"><td>Total Entrées</td><td>' . number_format($total_income, 0, ',', ' ') . '</td></tr>
-                    <tr><td>Dépenses</td><td>' . number_format($expenses, 0, ',', ' ') . '</td></tr>
+                    <tr class="total-row"><td>Total EntrÃ©es</td><td>' . number_format($total_income, 0, ',', ' ') . '</td></tr>
+                    <tr><td>DÃ©penses</td><td>' . number_format($expenses, 0, ',', ' ') . '</td></tr>
                     <tr class="total-row"><td>SOLDE</td><td>' . number_format($balance, 0, ',', ' ') . '</td></tr>
                 </table>';
     }
@@ -341,10 +347,10 @@ class ReportController {
     private function generateTithesHTML($year, $month) {
         if ($month) {
             $tithes = $this->titheModel->search(null, "$year-$month-01", "$year-$month-31");
-            $title = "Dîmes du mois " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/$year";
+            $title = "DÃ®mes du mois " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/$year";
         } else {
             $tithes = $this->titheModel->search(null, "$year-01-01", "$year-12-31");
-            $title = "Dîmes de l'année $year";
+            $title = "DÃ®mes de l'annÃ©e $year";
         }
 
         $html = '<h1>MALOTY - ' . htmlspecialchars($title) . '</h1>';
@@ -368,11 +374,11 @@ class ReportController {
             $title = "Offrandes du mois " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/$year";
         } else {
             $offerings = $this->offeringModel->search(null, "$year-01-01", "$year-12-31");
-            $title = "Offrandes de l'année $year";
+            $title = "Offrandes de l'annÃ©e $year";
         }
 
         $html = '<h1>MALOTY - ' . htmlspecialchars($title) . '</h1>';
-        $html .= '<table><tr><th>Type</th><th>Montant (CDF)</th><th>Événement</th><th>Date</th></tr>';
+        $html .= '<table><tr><th>Type</th><th>Montant (CDF)</th><th>Ã‰vÃ©nement</th><th>Date</th></tr>';
         
         $total = 0;
         foreach ($offerings as $o) {
@@ -390,14 +396,14 @@ class ReportController {
     private function generateExpensesHTML($year, $month) {
         if ($month) {
             $expenses = $this->expenseModel->search(null, "$year-$month-01", "$year-$month-31");
-            $title = "Dépenses du mois " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/$year";
+            $title = "DÃ©penses du mois " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/$year";
         } else {
             $expenses = $this->expenseModel->search(null, "$year-01-01", "$year-12-31");
-            $title = "Dépenses de l'année $year";
+            $title = "DÃ©penses de l'annÃ©e $year";
         }
 
         $html = '<h1>MALOTY - ' . htmlspecialchars($title) . '</h1>';
-        $html .= '<table><tr><th>Catégorie</th><th>Montant (CDF)</th><th>Description</th><th>Statut</th><th>Date</th></tr>';
+        $html .= '<table><tr><th>CatÃ©gorie</th><th>Montant (CDF)</th><th>Description</th><th>Statut</th><th>Date</th></tr>';
         
         $total = 0;
         foreach ($expenses as $e) {
@@ -441,3 +447,5 @@ class ReportController {
         return $sql;
     }
 }
+
+
