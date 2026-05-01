@@ -14,101 +14,81 @@ class App {
     constructor() {
         this.currentPage = null;
         this.currentUser = JSON.parse(localStorage.getItem('user'));
+        this.shellRendered = false;
         this.init();
     }
 
     async init() {
         const token = localStorage.getItem('token');
 
-        if (this.currentUser && !token) {
-            api.clearSession();
-            this.currentUser = null;
-        }
-
-        // Tenter de restaurer la session depuis l'API si le localStorage est vide ou expire
-        if (!this.currentUser && token) {
-            try {
-                const result = await api.getProfile();
-                if (result && result.success) {
-                    this.currentUser = result.user;
-                    localStorage.setItem('user', JSON.stringify(this.currentUser));
-                }
-            } catch (e) {
-                console.log('--- Session non trouvee au demarrage ---');
-            }
-        } else if (this.currentUser && token) {
+        // Restaurer la session avant de décider de la page
+        if (token) {
             try {
                 const result = await api.getProfile();
                 if (result && result.success) {
                     this.currentUser = result.user;
                     localStorage.setItem('user', JSON.stringify(this.currentUser));
                 } else {
-                    // garder la session locale si l'API n'est pas disponible
+                    api.clearSession();
+                    this.currentUser = null;
                 }
             } catch (e) {
-                console.log('--- Session invalide au demarrage ---');
-                // garder la session locale si l'API n'est pas disponible
+                console.log('--- Erreur restauration session ---', e);
+                // On garde la session locale si l'API est injoignable (mode dégradé)
+                // sauf si c'est une erreur 401 explicite (déjà gérée par api.request)
             }
         }
 
-        // Ajouter les Ã©vÃ©nements de navigation haut niveau (DÃ©lÃ©gation)
+        // Événements de navigation
         document.addEventListener('click', async (e) => {
-            // GÃ©rer les liens de menu
             const link = e.target.closest('[data-page]');
             if (link) {
                 e.preventDefault();
                 const page = link.getAttribute('data-page');
                 const memberId = link.getAttribute('data-edit-member');
                 
-                // Si on va au dashboard, on nettoie l'URL (racine)
-                const url = page === 'dashboard' ? '/' : `/${page}`;
-                history.pushState({ page, memberId }, '', url);
+                this.pushState(page, { memberId });
                 this.navigate(page, { memberId });
                 
-                // Fermer la sidebar aprÃ¨s clic sur un lien mobile
                 this.setSidebarOpen(false);
                 return;
             }
 
-            // GÃ©rer le toggle de la sidebar mobile
-            if (e.target.closest('#sidebarToggle')) {
-                this.setSidebarOpen(true);
-            } else if (e.target.closest('#sidebarClose') || e.target.closest('#sidebarOverlay')) {
-                this.setSidebarOpen(false);
-            }
+            if (e.target.closest('#sidebarToggle')) this.setSidebarOpen(true);
+            else if (e.target.closest('#sidebarClose') || e.target.closest('#sidebarOverlay')) this.setSidebarOpen(false);
         });
 
-        // GÃ©rer le bouton retour du navigateur
         window.addEventListener('popstate', (e) => {
             const page = e.state ? e.state.page : this.getPageFromUrl();
-            const memberId = e.state ? e.state.memberId : null;
-            this.navigate(page, { memberId });
+            const params = e.state ? e.state : {};
+            this.navigate(page, params);
         });
 
-        // Afficher la page initiale basÃ©e sur l'URL
+        // Afficher la page initiale
         const initialPage = this.getPageFromUrl();
         
-        // Si on est sur la page de login mais dÃ©jÃ  authentifiÃ©, on redirige vers le dashboard
         if (initialPage === 'login' && this.currentUser) {
             this.navigate('dashboard');
-            history.replaceState({ page: 'dashboard' }, '', '/');
+            this.pushState('dashboard', {}, true);
         } else {
             await this.navigate(initialPage);
             
-            // Post-payment messages (?status=...)
+            // Paramètres de succès paiement
             const params = new URLSearchParams(window.location.search);
             if (initialPage === 'contribute' && params.get('status')) {
                 const status = params.get('status');
                 const successMsg = document.getElementById('contributionSuccess');
-                if (status === 'success' && successMsg) {
-                    successMsg.classList.remove('hidden');
-                } else if (status === 'cancel') {
-                    alert('Le paiement a Ã©tÃ© annulÃ©.');
-                }
-                // Nettoyer l'URL
+                if (status === 'success' && successMsg) successMsg.classList.remove('hidden');
                 history.replaceState({ page: 'contribute' }, '', '/contribute');
             }
         }
+    }
+
+    pushState(page, params = {}, replace = false) {
+        const url = page === 'dashboard' ? '/' : `/${page}`;
+        const state = { page, ...params };
+        if (replace) history.replaceState(state, '', url);
+        else history.pushState(state, '', url);
     }
 
     getPageFromUrl() {
@@ -116,60 +96,42 @@ class App {
         const path = rawPath.replace(/\.php$/i, '');
 
         const legacyMap = {
-            'admin/dashboard': 'dashboard',
-            'admin/members': 'members',
-            'admin/finances': 'finance',
-            'admin/expenses': 'expenses',
-            'admin/reports': 'reports',
-            'admin/settings': 'settings',
-            'admin/logs': 'audit-logs',
-            'treasurer/dashboard': 'dashboard',
-            'secretary/dashboard': 'dashboard',
-            'login': 'login',
-            'dashboard': 'dashboard',
-            'members': 'members',
-            'members-form': 'members-form',
-            'finance': 'finance',
-            'tithes': 'tithes',
-            'tithe-form': 'tithe-form',
-            'offerings': 'offerings',
-            'offering-form': 'offering-form',
-            'expenses': 'expenses',
-            'expense-form': 'expense-form',
-            'reports': 'reports',
-            'audit-logs': 'audit-logs',
-            'settings': 'settings',
-            'contribute': 'contribute',
-            'home': 'home'
+            'login': 'login', 'dashboard': 'dashboard', 'members': 'members',
+            'members-form': 'members-form', 'finance': 'finance', 'tithes': 'tithes',
+            'tithe-form': 'tithe-form', 'offerings': 'offerings', 'offering-form': 'offering-form',
+            'expenses': 'expenses', 'expense-form': 'expense-form', 'reports': 'reports',
+            'audit-logs': 'audit-logs', 'settings': 'settings', 'contribute': 'contribute',
+            'home': 'home', 'member-dashboard': 'member-dashboard'
         };
 
-        const normalized = legacyMap[path] || legacyMap[path.replace(/^frontend\//, '')] || 'home';
-        if (!this.currentUser && path !== 'login' && path !== 'contribute' && path !== 'home') {
+        let normalized = legacyMap[path] || 'home';
+        
+        // Si logué et sur home, on va au dashboard
+        if (this.currentUser && normalized === 'home') {
+            const role = UI.normalizeRole(this.currentUser.role);
+            return role === 'member' ? 'member-dashboard' : 'dashboard';
+        }
+
+        // Si non logué et tente page protégée
+        if (!this.currentUser && !['login', 'contribute', 'home'].includes(normalized)) {
             return 'home';
         }
+
         return normalized;
     }
 
     async navigate(page, params = {}) {
         try {
-            // VÃ©rifier l'authentification
-            if (page !== 'login' && page !== 'contribute' && page !== 'home' && !this.currentUser) {
-                console.warn('Authentication required, redirecting to home');
+            // 1. Vérification Sécurité
+            const isPublic = ['login', 'contribute', 'home'].includes(page);
+            if (!isPublic && !this.currentUser) {
                 this.navigate('home');
-                history.replaceState({ page: 'home' }, '', '/');
+                this.pushState('home', {}, true);
                 return;
             }
 
-            // Normaliser le rÃ´le pour Ã©viter les erreurs d'accents (trÃ©sorier -> tresorier)
-            // GÃ¨re aussi les erreurs d'encodage (tr??sorier)
-            const roleInput = (this.currentUser?.role || 'visiteur').toLowerCase();
-            let role = roleInput.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            
-            if (role.includes('adm')) role = 'admin';
-            else if (role.includes('sorier') || role.startsWith('tr')) role = 'tresorier';
-            else if (role.includes('ecretaire') || role.startsWith('sec')) role = 'secretaire';
-            else if (role.includes('membre') || role.startsWith('mem')) role = 'member';
-
+            // 2. Vérification Rôles
+            const role = UI.normalizeRole(this.currentUser?.role);
             const perms = {
                 'dashboard': ['admin', 'tresorier', 'secretaire'],
                 'member-dashboard': ['admin', 'member'],
@@ -187,113 +149,157 @@ class App {
                 'settings': ['admin']
             };
 
-            if (page !== 'login' && perms[page] && !perms[page].includes(role)) {
-                console.warn(`AccÃ¨s refusÃ©: page=${page}, rÃ´le=${role}`);
-                if (page === 'dashboard') {
-                    this.navigate('login');
-                    history.replaceState({ page: 'login' }, '', '/login');
-                } else {
-                    this.navigate('dashboard');
-                }
+            if (!isPublic && perms[page] && !perms[page].includes(role)) {
+                const fallback = role === 'member' ? 'member-dashboard' : 'dashboard';
+                this.navigate(fallback);
+                this.pushState(fallback, {}, true);
                 return;
             }
 
-            this.currentPage = page;
+            // 3. Gestion du Rendu (Shell vs No Shell)
             const app = document.getElementById('app');
+            const hasShell = !['login', 'home', 'contribute'].includes(page);
+            
+            this.showLoading();
 
-            // Charger la page appropriÃ©e
+            let html = '';
+            // Charger le HTML via Pages
             switch (page) {
-                case 'login':
-                    app.innerHTML = await Pages.loginPage();
-                    this.attachLoginEvents();
-                    break;
-
-                case 'home':
-                    app.innerHTML = await Pages.homePage();
-                    this.attachHomeEvents();
-                    break;
-
-                case 'dashboard':
-                    if (role === 'member') {
-                        this.navigate('member-dashboard');
-                        history.replaceState({ page: 'member-dashboard' }, '', '/member-dashboard');
-                        return;
-                    }
-                    app.innerHTML = await Pages.dashboardPage();
-                    this.initDashboard();
-                    break;
-
-                case 'member-dashboard':
-                    app.innerHTML = await Pages.memberDashboardPage();
-                    break;
-
-                case 'members':
-                    app.innerHTML = await Pages.membersPage();
-                    this.attachMembersFilters();
-                    break;
-
-                case 'members-form':
-                    app.innerHTML = await Pages.memberFormPage(params.memberId);
-                    this.attachMemberEvents();
-                    break;
-
-                case 'finance':
-                    app.innerHTML = await Pages.financePage();
-                    break;
-
-                case 'tithes':
-                    app.innerHTML = await Pages.titheListPage();
-                    break;
-                case 'tithe-form':
-                    app.innerHTML = await Pages.titheFormPage();
-                    this.attachFinanceEntryEvents('tithe');
-                    break;
-
-                case 'offerings':
-                    app.innerHTML = await Pages.offeringListPage();
-                    break;
-                case 'offering-form':
-                    app.innerHTML = await Pages.offeringFormPage();
-                    this.attachFinanceEntryEvents('offering');
-                    break;
-
-                case 'expenses':
-                    app.innerHTML = await Pages.expensesPage();
-                    this.attachExpenseActionEvents();
-                    break;
-                case 'expense-form':
-                    app.innerHTML = await Pages.expenseFormPage();
-                    this.attachExpenseEvents();
-                    break;
-
-                case 'reports':
-                    app.innerHTML = await Pages.reportsPage();
-                    this.attachReportEvents();
-                    break;
-
-                case 'audit-logs':
-                    app.innerHTML = await Pages.auditLogsPage();
-                    break;
-
-                case 'settings':
-                    app.innerHTML = await Pages.settingsPage();
-                    this.attachSettingsEvents();
-                    break;
-
-                case 'contribute':
-                    app.innerHTML = await Pages.memberContributionPage();
-                    this.attachPublicContributionEvents();
-                    break;
-
-                default:
-                    this.navigate('dashboard');
+                case 'login': html = await Pages.loginPage(); break;
+                case 'home': html = await Pages.homePage(); break;
+                case 'contribute': html = await Pages.memberContributionPage(); break;
+                case 'dashboard': html = await Pages.dashboardPage(); break;
+                case 'member-dashboard': html = await Pages.memberDashboardPage(); break;
+                case 'members': html = await Pages.membersPage(); break;
+                case 'members-form': html = await Pages.memberFormPage(params.memberId); break;
+                case 'finance': html = await Pages.financePage(); break;
+                case 'tithes': html = await Pages.titheListPage(); break;
+                case 'tithe-form': html = await Pages.titheFormPage(); break;
+                case 'offerings': html = await Pages.offeringListPage(); break;
+                case 'offering-form': html = await Pages.offeringFormPage(); break;
+                case 'expenses': html = await Pages.expensesPage(); break;
+                case 'expense-form': html = await Pages.expenseFormPage(); break;
+                case 'reports': html = await Pages.reportsPage(); break;
+                case 'audit-logs': html = await Pages.auditLogsPage(); break;
+                case 'settings': html = await Pages.settingsPage(); break;
+                default: html = await Pages.dashboardPage(); break;
             }
 
-            // Mettre Ã  jour le titre
+            this.currentPage = page;
             document.title = `MALOTY - ${page.charAt(0).toUpperCase() + page.slice(1)}`;
-            
+
+            // Rendu intelligent : Si on a déjà le shell et qu'on reste dans une page à shell
+            if (hasShell && this.shellRendered) {
+                const temp = document.createElement('div');
+                temp.innerHTML = html;
+                const newContent = temp.querySelector('.app-main-inner');
+                const oldContent = document.querySelector('.app-main-inner');
+                
+                if (newContent && oldContent) {
+                    oldContent.innerHTML = newContent.innerHTML;
+                    
+                    // Mettre à jour le lien actif dans la sidebar
+                    document.querySelectorAll('.app-nav a').forEach(link => {
+                        const isMain = link.getAttribute('data-page') === page;
+                        if (isMain) {
+                            link.classList.add('bg-blue-600', 'text-white', 'shadow-md');
+                            link.classList.remove('text-slate-400', 'hover:text-white', 'hover:bg-white/5');
+                            link.querySelector('span')?.classList.replace('bg-white/5', 'bg-white/20');
+                        } else {
+                            link.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
+                            link.classList.add('text-slate-400', 'hover:text-white', 'hover:bg-white/5');
+                            link.querySelector('span')?.classList.replace('bg-white/20', 'bg-white/5');
+                        }
+                    });
+
+                    this.currentPage = page;
+                    this.attachEvents(page, params);
+                    this.hideLoading();
+                    return;
+                }
+            }
+
+            app.innerHTML = html;
+            this.shellRendered = hasShell;
+
+            // 4. Post-rendu (Attacher les événements)
+            this.attachEvents(page, params);
+            this.initPasswordToggles();
+            this.hideLoading();
+
         } catch (error) {
-            console.error('Erreur de navigation:', error);
+            console.error('Erreur navigation:', error);
+            this.hideLoading();
+        }
+    }
+
+    initPasswordToggles() {
+        const fields = document.querySelectorAll('input[type="password"]');
+        fields.forEach(field => {
+            if (field.dataset.hasToggle) return;
+            field.dataset.hasToggle = "true";
+
+            // S'assurer que le parent peut contenir un bouton absolu
+            const parent = field.parentElement;
+            if (window.getComputedStyle(parent).position === 'static') {
+                parent.style.position = 'relative';
+            }
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-600 transition-colors z-20 p-2';
+            btn.innerHTML = '<i class="fas fa-eye"></i>';
+            
+            // Padding pour ne pas chevaucher le texte
+            field.style.paddingRight = '3.5rem';
+
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const isPass = field.type === 'password';
+                field.type = isPass ? 'text' : 'password';
+                btn.innerHTML = `<i class="fas fa-eye${isPass ? '-slash' : ''}"></i>`;
+            });
+
+            field.after(btn);
+        });
+    }
+
+    attachEvents(page, params) {
+        switch (page) {
+            case 'login': this.attachLoginEvents(); break;
+            case 'home': this.attachHomeEvents(); break;
+            case 'contribute': this.attachPublicContributionEvents(); break;
+            case 'dashboard': this.initDashboard(); break;
+            case 'members': this.attachMembersFilters(); break;
+            case 'members-form': this.attachMemberEvents(); break;
+            case 'tithe-form': this.attachFinanceEntryEvents('tithe'); break;
+            case 'offering-form': this.attachFinanceEntryEvents('offering'); break;
+            case 'expenses': this.attachExpenseActionEvents(); break;
+            case 'expense-form': this.attachExpenseEvents(); break;
+            case 'reports': this.attachReportEvents(); break;
+            case 'settings': this.attachSettingsEvents(); break;
+        }
+    }
+
+    showLoading() {
+        const loader = document.getElementById('pageLoader');
+        if (loader) loader.classList.remove('hidden');
+        else {
+            const div = document.createElement('div');
+            div.id = 'pageLoader';
+            div.className = 'fixed inset-0 z-[100] bg-white/60 backdrop-blur-sm flex items-center justify-center transition-all duration-300';
+            div.innerHTML = '<div class="w-12 h-12 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>';
+            document.body.appendChild(div);
+        }
+    }
+
+    hideLoading() {
+        const loader = document.getElementById('pageLoader');
+        if (loader) {
+            loader.classList.add('opacity-0');
+            setTimeout(() => loader.classList.add('hidden'), 300);
+            setTimeout(() => loader.classList.remove('opacity-0'), 350);
         }
     }
 

@@ -202,36 +202,32 @@ class DashboardController {
         ]);
     }
 
-    private static $cachedColumns = [];
+    private static $cachedSchema = [];
 
     private function hasColumn($table, $column) {
-        $cacheKey = $table . '.' . $column;
-        if (array_key_exists($cacheKey, self::$cachedColumns)) {
-            return self::$cachedColumns[$cacheKey];
-        }
-
-        try {
-            $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
-            if ($driver === 'pgsql') {
-                $sql = "
-                    SELECT COUNT(*) FROM information_schema.columns
-                    WHERE table_schema = 'public' AND table_name = ? AND column_name = ?
-                ";
-            } else {
-                $sql = "
-                    SELECT COUNT(*) FROM information_schema.columns
-                    WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
-                ";
+        if (empty(self::$cachedSchema)) {
+            try {
+                $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+                $tables = ['tithes', 'offerings', 'expenses'];
+                $placeholders = implode(',', array_fill(0, count($tables), '?'));
+                
+                if ($driver === 'pgsql') {
+                    $sql = "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name IN ($placeholders)";
+                } else {
+                    $sql = "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name IN ($placeholders)";
+                }
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute($tables);
+                while ($row = $stmt->fetch()) {
+                    self::$cachedSchema[$row['table_name'] . '.' . $row['column_name']] = true;
+                }
+            } catch (Exception $e) {
+                // En cas d'erreur, on laisse le cache vide
             }
-
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([$table, $column]);
-            $exists = (int)$stmt->fetchColumn() > 0;
-            self::$cachedColumns[$cacheKey] = $exists;
-            return $exists;
-        } catch (Exception $e) {
-            return false;
         }
+        
+        return isset(self::$cachedSchema["$table.$column"]);
     }
 
     private function getValidatedTitheTotal($year = null, $month = null, $memberId = null) {
