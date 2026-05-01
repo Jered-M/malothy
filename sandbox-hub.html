@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Sandbox Paiement - MALOTY Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+        }
+        
+        header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+        
+        .card-body {
+            padding: 25px;
+        }
+        
+        .card-body p {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        
+        .card-footer {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: bold;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: scale(1.05);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .status-box {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 40px;
+        }
+        
+        .status-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 20px;
+        }
+        
+        .status-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .status-item {
+            padding: 15px;
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            border-radius: 6px;
+        }
+        
+        .status-item.success {
+            border-left-color: #48bb78;
+            background: #f0fff4;
+        }
+        
+        .status-item label {
+            display: block;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+        
+        .status-item span {
+            color: #4a5568;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .badge-success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .badge-warning {
+            background: #feebc8;
+            color: #7c2d12;
+        }
+        
+        .quick-links {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 40px;
+        }
+        
+        .quick-links h3 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+        
+        .links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .link-btn {
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            text-align: center;
+            font-weight: bold;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .link-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        footer {
+            text-align: center;
+            color: white;
+            opacity: 0.8;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .emoji-icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="emoji-icon">🧪</div>
+            <h1>Sandbox Paiement MALOTY</h1>
+            <p>Système de paiement local - 100% opérationnel</p>
+        </header>
+
+        <!-- Quick Actions -->
+        <div class="quick-links">
+            <h3>⚡ Actions Rapides</h3>
+            <div class="links-grid">
+                <a href="backend/api/payment_sandbox/status" class="link-btn" target="_blank">
+                    📊 Vérifier Status
+                </a>
+                <a href="frontend/test-sandbox.html" class="link-btn" target="_blank">
+                    🧪 Interface Test
+                </a>
+                <button class="link-btn" onclick="copyCommand()">
+                    📋 Copier Commande
+                </button>
+                <button class="link-btn" onclick="showCommandDialog()">
+                    🚀 Commandes
+                </button>
+            </div>
+        </div>
+
+        <!-- Status Box -->
+        <div class="status-box">
+            <div class="status-title">📊 Configuration du Sandbox</div>
+            <div class="status-items">
+                <div class="status-item success">
+                    <label>Statut</label>
+                    <span>✅ Sandbox Installé <span class="badge badge-success">v1.0</span></span>
+                </div>
+                <div class="status-item">
+                    <label>Configuration</label>
+                    <span>✅ sandbox-config.php</span>
+                </div>
+                <div class="status-item">
+                    <label>Contrôleur API</label>
+                    <span>✅ PaymentSandboxController.php</span>
+                </div>
+                <div class="status-item">
+                    <label>Interface Web</label>
+                    <span>✅ test-sandbox.html</span>
+                </div>
+                <div class="status-item">
+                    <label>Documentation</label>
+                    <span>✅ 5 guides complets</span>
+                </div>
+                <div class="status-item success">
+                    <label>Prêt à l'Emploi</label>
+                    <span>✅ Oui</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid">
+            <!-- Documentation -->
+            <div class="card">
+                <div class="card-header">📚 Documentation</div>
+                <div class="card-body">
+                    <p>Guides progressifs pour apprendre le sandbox.</p>
+                    <div class="card-footer">
+                        <a href="README_SANDBOX.md" class="btn btn-primary" target="_blank">
+                            Accueil
+                        </a>
+                        <a href="QUICKSTART_SANDBOX.md" class="btn btn-secondary" target="_blank">
+                            Démarrage Rapide (5 min)
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tests -->
+            <div class="card">
+                <div class="card-header">🧪 Tests</div>
+                <div class="card-body">
+                    <p>Interface interactive pour tester l'API de paiement.</p>
+                    <div class="card-footer">
+                        <a href="frontend/test-sandbox.html" class="btn btn-primary" target="_blank">
+                            Ouvrir Interface
+                        </a>
+                        <a href="backend/api/payment_sandbox/status" class="btn btn-secondary" target="_blank">
+                            Vérifier Status
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Guide -->
+            <div class="card">
+                <div class="card-header">📡 Guide API</div>
+                <div class="card-body">
+                    <p>Tous les endpoints avec exemples cURL et JavaScript.</p>
+                    <div class="card-footer">
+                        <a href="SANDBOX_PAYMENT_GUIDE.md" class="btn btn-primary" target="_blank">
+                            Lire le Guide
+                        </a>
+                        <a href="INSTALLATION_SANDBOX.md" class="btn btn-secondary" target="_blank">
+                            Configuration
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Architecture -->
+            <div class="card">
+                <div class="card-header">🏗️ Architecture</div>
+                <div class="card-body">
+                    <p>Vue d'ensemble du système et des composants.</p>
+                    <div class="card-footer">
+                        <a href="ARCHITECTURE_SANDBOX.md" class="btn btn-primary" target="_blank">
+                            Voir Architecture
+                        </a>
+                        <a href="SUMMARY_SANDBOX.md" class="btn btn-secondary" target="_blank">
+                            Résumé
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Integration -->
+            <div class="card">
+                <div class="card-header">💻 Intégration</div>
+                <div class="card-body">
+                    <p>Intégrer le sandbox au frontend de votre application.</p>
+                    <div class="card-footer">
+                        <a href="FRONTEND_INTEGRATION_GUIDE.md" class="btn btn-primary" target="_blank">
+                            Guide d'Intégration
+                        </a>
+                        <a href="LOCAL_PAYMENT_SYSTEM_README.md" class="btn btn-secondary" target="_blank">
+                            Système de Paiement
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verification -->
+            <div class="card">
+                <div class="card-header">✅ Vérification</div>
+                <div class="card-body">
+                    <p>Vérifier que tout est correctement configuré.</p>
+                    <div class="card-footer">
+                        <button class="btn btn-primary" onclick="runVerification()">
+                            Vérifier Setup
+                        </button>
+                        <a href="#" class="btn btn-secondary" onclick="viewLogs(); return false;">
+                            Voir Logs
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Endpoints Summary -->
+        <div class="status-box">
+            <div class="status-title">📡 Endpoints Disponibles</div>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background: #f7fafc; border-bottom: 2px solid #e2e8f0;">
+                        <th style="padding: 12px; text-align: left; color: #2d3748;">Endpoint</th>
+                        <th style="padding: 12px; text-align: left; color: #2d3748;">Méthode</th>
+                        <th style="padding: 12px; text-align: left; color: #2d3748;">Description</th>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 12px;">/payment_sandbox/status</td>
+                        <td style="padding: 12px;">GET</td>
+                        <td style="padding: 12px;">Statut du sandbox</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 12px;">/payment_sandbox/test-create</td>
+                        <td style="padding: 12px;">POST</td>
+                        <td style="padding: 12px;">Créer un paiement</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 12px;">/payment_sandbox/test-confirm</td>
+                        <td style="padding: 12px;">POST</td>
+                        <td style="padding: 12px;">Confirmer paiement</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 12px;">/payment_sandbox/test-status</td>
+                        <td style="padding: 12px;">GET</td>
+                        <td style="padding: 12px;">Vérifier statut</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 12px;">/payment_sandbox/test-list</td>
+                        <td style="padding: 12px;">GET</td>
+                        <td style="padding: 12px;">Lister paiements</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 12px;">/payment_sandbox/test-simulate</td>
+                        <td style="padding: 12px;">POST</td>
+                        <td style="padding: 12px;">Workflow complet</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 12px;">/payment_sandbox/generate-test-data</td>
+                        <td style="padding: 12px;">POST</td>
+                        <td style="padding: 12px;">Générer données</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px;">/payment_sandbox/reset-all</td>
+                        <td style="padding: 12px;">POST</td>
+                        <td style="padding: 12px;">Réinitialiser</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>🧪 Sandbox Paiement MALOTY v1.0 | 30 Avril 2026</p>
+            <p>Système de paiement local - 100% opérationnel, aucune dépendance externe</p>
+        </footer>
+    </div>
+
+    <script>
+        function copyCommand() {
+            const cmd = 'powershell -ExecutionPolicy Bypass -File start-sandbox.ps1';
+            navigator.clipboard.writeText(cmd).then(() => {
+                alert('✅ Commande copiée:\n\n' + cmd);
+            });
+        }
+
+        function showCommandDialog() {
+            alert(`
+🚀 COMMANDES DE DÉMARRAGE
+
+Windows PowerShell:
+  powershell -ExecutionPolicy Bypass -File start-sandbox.ps1
+
+Windows CMD:
+  start-sandbox.bat
+
+Mac/Linux:
+  php -S localhost:8000
+
+Puis accédez à:
+  http://localhost:8000/MALOTY/frontend/test-sandbox.html
+            `);
+        }
+
+        function runVerification() {
+            alert('✅ Pour vérifier le setup, exécutez:\n\nphp verify-sandbox.php');
+        }
+
+        function viewLogs() {
+            alert('📊 Logs de sandbox:\n\ntmp/sandbox-logs/sandbox-YYYY-MM-DD.log');
+        }
+
+        // Test API Status au chargement
+        window.addEventListener('load', () => {
+            fetch('/MALOTY/backend/api/payment_sandbox/status')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        console.log('✅ API OK');
+                    }
+                })
+                .catch(e => console.warn('API pas accessible: ' + e.message));
+        });
+    </script>
+</body>
+</html>

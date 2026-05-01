@@ -71,11 +71,11 @@ defineFromEnv('APP_URL', $currentUrl);
 defineFromEnv('APP_DEBUG', true);
 defineFromEnv('SESSION_TIMEOUT', 3600);
 
-// CONFIGURATION MAISHAPAY (MOBILE MONEY)
-defineFromEnv('MAISHAPAY_PUBLIC_KEY', 'VOTRE_CLE_PUBLIQUE');
-defineFromEnv('MAISHAPAY_SECRET_KEY', 'VOTRE_CLE_SECRETE');
+// CONFIGURATION MAISHAPAY (MOBILE MONEY) - MODE TEST (SANDBOX) POUR TFC
+defineFromEnv('MAISHAPAY_PUBLIC_KEY', 'pk_test_demo_tfc'); // À remplacer par vos clés de test réelles
+defineFromEnv('MAISHAPAY_SECRET_KEY', 'sk_test_demo_tfc'); // À remplacer par vos clés de test réelles
 defineFromEnv('MAISHAPAY_GATEWAY_MODE', 0); // 0 pour TEST (Sandbox), 1 pour LIVE (Production)
-defineFromEnv('MAISHAPAY_CURRENCY', 'CDF'); // Devise par défaut
+defineFromEnv('MAISHAPAY_CURRENCY', 'CDF'); // Devise par défaut - A adapter selon besoin (XAF, XOF, etc)
 
 // Constantes de l'application - NE PAS REDÉFINIR si déjà défini
 if (!defined('PROJECT_ROOT')) {

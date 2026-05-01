@@ -8,18 +8,25 @@ require_once PROJECT_ROOT . '/backend/models/Tithe.php';
 require_once PROJECT_ROOT . '/backend/models/Offering.php';
 require_once PROJECT_ROOT . '/backend/models/Member.php';
 require_once PROJECT_ROOT . '/backend/api/services/FlutterwaveService.php';
+require_once PROJECT_ROOT . '/backend/api/services/LocalPaymentService.php';
+require_once PROJECT_ROOT . '/backend/api/services/MaishaPayService.php';
 
 class FinanceController {
     private $titheModel;
     private $offeringModel;
     private $memberModel;
-    private $paymentService;
+    private $flutterwaveService;
+    private $localPaymentService;
+    private $maishaPayService;
 
     public function __construct() {
+        $db = Database::getInstance()->getConnection();
         $this->titheModel = new Tithe();
         $this->offeringModel = new Offering();
         $this->memberModel = new Member();
-        $this->paymentService = new FlutterwaveService();
+        $this->flutterwaveService = new FlutterwaveService();
+        $this->localPaymentService = new LocalPaymentService($db);
+        $this->maishaPayService = new MaishaPayService();
     }
 
     /**
@@ -172,6 +179,9 @@ class FinanceController {
     /**
      * POST /api/finance/public_tithe
      * Enregistrement d'une dîme par un membre (sans authentification staff)
+     * 
+     * Utilise le système de paiement LOCAL (sans dépendance Flutterwave)
+     * Retourne une référence de paiement + code de confirmation
      */
     public function public_tithe() {
         try {
@@ -187,32 +197,51 @@ class FinanceController {
             $memberId = $input['member_id'] ?? null;
             $memberName = $input['member_name'] ?? 'Donateur Anonyme';
 
+            // 1. Enregistrer la dîme en DB
             $data = [
                 'member_id' => $memberId,
                 'amount' => $input['amount'],
                 'currency' => $input['currency'] ?? 'CDF',
                 'tithe_date' => $input['tithe_date'],
                 'payment_status' => 'pending',
-                'comment' => "Don par: {$memberName} | " . ($input['comment'] ?? '') . ' (Flutterwave Pending)',
+                'comment' => ($input['comment'] ?? '') . " | Enregistré via formulaire public",
                 'recorded_by' => null 
             ];
 
             $id = $this->titheModel->recordTithe($data);
 
-            // Préparer le lien de paiement Flutterwave
-            $paymentData = $this->paymentService->generateCheckoutLink([
+            // 2. Créer une demande de paiement local
+            $paymentRequest = $this->localPaymentService->createPaymentRequest([
+                'type' => 'tithe',
                 'amount' => $data['amount'],
                 'currency' => $data['currency'],
-                'description' => "Dîme de {$memberName}",
-                'customer_name' => $memberName,
-                'success_url' => APP_URL . '/contribute?status=success&id=' . $id,
-                'cancel_url' => APP_URL . '/contribute?status=cancel'
+                'donor_name' => $memberName,
+                'donor_email' => $input['donor_email'] ?? '',
+                'donor_phone' => $input['donor_phone'] ?? '',
+                'member_id' => $memberId,
+                'description' => "Dîme de {$memberName} - " . date('d/m/Y')
             ]);
+
+            if ($paymentRequest['status'] !== 'success') {
+                json_error('Erreur lors de la création de la demande de paiement : ' . ($paymentRequest['message'] ?? 'Erreur inconnue'), 500);
+            }
 
             json_response([
                 'success' => true,
-                'message' => 'Redirection vers le paiement...',
-                'payment_url' => $paymentData['payment_url'],
+                'message' => 'Demande de paiement créée. Veuillez communiquer votre code de confirmation.',
+                'payment' => [
+                    'reference' => $paymentRequest['payment_ref'],
+                    'confirmation_code' => $paymentRequest['confirmation_code'],
+                    'amount' => $paymentRequest['amount'],
+                    'currency' => $paymentRequest['currency'],
+                    'expires_at' => $paymentRequest['expires_at'],
+                    'instructions' => [
+                        '1. Communiquez votre référence de paiement au trésorier',
+                        '2. Effectuez votre paiement via Mobile Money (M-Pesa, Airtel, Orange)',
+                        '3. Confirmez avec le code ci-dessus',
+                        '4. Le trésorier marquera votre paiement comme confirmé'
+                    ]
+                ],
                 'id' => $id
             ], 201);
         } catch (Exception $e) {
@@ -223,6 +252,9 @@ class FinanceController {
     /**
      * POST /api/finance/public_offering
      * Enregistrement d'une offrande par un membre (sans authentification staff)
+     * 
+     * Utilise le système de paiement LOCAL (sans dépendance Flutterwave)
+     * Retourne une référence de paiement + code de confirmation
      */
     public function public_offering() {
         try {
@@ -238,6 +270,7 @@ class FinanceController {
             $memberId = $input['member_id'] ?? null;
             $memberName = $input['member_name'] ?? 'Donateur Anonyme';
 
+            // 1. Enregistrer l'offrande en DB
             $data = [
                 'type' => $input['type'],
                 'member_id' => $memberId,
@@ -245,26 +278,44 @@ class FinanceController {
                 'currency' => $input['currency'] ?? 'CDF',
                 'offering_date' => $input['offering_date'],
                 'payment_status' => 'pending',
-                'description' => ($input['description'] ?? "Don de {$memberName}") . ' (Flutterwave Pending)',
+                'description' => ($input['description'] ?? "Offrande de {$memberName}") . ' | Enregistré via formulaire public',
                 'recorded_by' => null // Public
             ];
 
             $id = $this->offeringModel->recordOffering($data);
 
-            // Préparer le lien de paiement Flutterwave
-            $paymentData = $this->paymentService->generateCheckoutLink([
+            // 2. Créer une demande de paiement local
+            $paymentRequest = $this->localPaymentService->createPaymentRequest([
+                'type' => 'offering',
                 'amount' => $data['amount'],
                 'currency' => $data['currency'],
-                'description' => "Offrande de {$memberName}",
-                'customer_name' => $memberName,
-                'success_url' => APP_URL . '/contribute?status=success&id=' . $id,
-                'cancel_url' => APP_URL . '/contribute?status=cancel'
+                'donor_name' => $memberName,
+                'donor_email' => $input['donor_email'] ?? '',
+                'donor_phone' => $input['donor_phone'] ?? '',
+                'member_id' => $memberId,
+                'description' => "Offrande ({$input['type']}) de {$memberName} - " . date('d/m/Y')
             ]);
+
+            if ($paymentRequest['status'] !== 'success') {
+                json_error('Erreur lors de la création de la demande de paiement : ' . ($paymentRequest['message'] ?? 'Erreur inconnue'), 500);
+            }
 
             json_response([
                 'success' => true,
-                'message' => 'Redirection vers le paiement...',
-                'payment_url' => $paymentData['payment_url'],
+                'message' => 'Demande de paiement créée. Veuillez communiquer votre code de confirmation.',
+                'payment' => [
+                    'reference' => $paymentRequest['payment_ref'],
+                    'confirmation_code' => $paymentRequest['confirmation_code'],
+                    'amount' => $paymentRequest['amount'],
+                    'currency' => $paymentRequest['currency'],
+                    'expires_at' => $paymentRequest['expires_at'],
+                    'instructions' => [
+                        '1. Communiquez votre référence de paiement au trésorier',
+                        '2. Effectuez votre paiement via Mobile Money (M-Pesa, Airtel, Orange)',
+                        '3. Confirmez avec le code ci-dessus',
+                        '4. Le trésorier marquera votre paiement comme confirmé'
+                    ]
+                ],
                 'id' => $id
             ], 201);
         } catch (Exception $e) {

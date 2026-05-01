@@ -1837,6 +1837,9 @@ class Pages {
                         </div>
                         <form id="settingsForm" class="space-y-8">
                             <div>
+                                
+
+                            <div>
                                 <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2"><i class="fas fa-credit-card text-brand-500"></i> Passerelle Flutterwave</h3>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>

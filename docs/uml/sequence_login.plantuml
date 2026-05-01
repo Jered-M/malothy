@@ -1,0 +1,23 @@
+@startuml Sequence_Login
+
+title MALOTHY - Séquence d'Authentification
+
+actor Utilisateur
+participant "Frontend (JS)" as UI
+participant "AuthController" as Auth
+participant "User Model" as Model
+database "Base de données" as DB
+
+Utilisateur -> UI : Saisit Email/Password
+UI -> Auth : POST /api/auth/login
+Auth -> Model : authenticate(email, password)
+Model -> DB : SELECT * FROM users WHERE email = ?
+DB --> Model : Données utilisateur
+Model -> Model : password_verify()
+Model -> DB : UPDATE last_login
+Model --> Auth : User object
+Auth -> Auth : session_start() / set $_SESSION
+Auth --> UI : JSON Response {success: true, redirect: '/dashboard'}
+UI -> Utilisateur : Redirection Dashboard
+
+@enduml

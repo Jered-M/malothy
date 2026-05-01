@@ -1,0 +1,134 @@
+@startuml Class_Diagram
+
+' Configuration visuelle
+skinparam backgroundColor #FFFFFF
+skinparam roundcorner 10
+skinparam shadowing true
+skinparam class {
+    BackgroundColor White
+    ArrowColor #2C3E50
+    BorderColor #2C3E50
+}
+skinparam package {
+    BackgroundColor #F8F9FA
+    BorderColor #ADB5BD
+}
+
+title MALOTHY - Architecture Technique
+
+package "Cœur & Modèles" {
+    abstract class "ModèleDeBase" as BaseModel {
+        # db : PDO
+        # table : chaine
+        + __construct()
+        + findAll(orderBy, limit) : tableau
+        + findById(id) : tableau
+        + count(where) : entier
+        + query(sql, params) : PDOStatement
+        + queryAll(sql, params) : tableau
+        + queryOne(sql, params) : tableau
+        + insert(data) : entier|false
+        + update(id, data) : booléen
+        + delete(id) : booléen
+        # logAction(action, recordId, details, userId) : vide
+    }
+
+    package "Entités Métier" {
+        class "Utilisateur" as User {
+            + create(data) : entier
+            + authenticate(email, password) : tableau|false
+            + findByEmail(email) : tableau
+            + updateUser(id, data) : booléen
+            + changePassword(id, newPassword) : booléen
+            + getAllActive() : tableau
+        }
+
+        class "Membre" as Member {
+            + getMemberDetails(id) : tableau
+            + search(searchTerm, status, department) : tableau
+            + updateMember(id, data) : booléen
+            + deleteMember(id) : booléen
+            + getActiveMembersCount() : entier
+            + getDepartments() : tableau
+            + getFullName(id) : chaine
+        }
+
+        class "Dîme" as Tithe {
+            + recordTithe(data) : entier
+            + search(memberId, startDate, endDate) : tableau
+            + getMonthlyTotal(year, month) : flottant
+            + getTithesByMember(memberId, year) : tableau
+            + getYearlyTotal(year) : flottant
+        }
+
+        class "Offrande" as Offering {
+            + recordOffering(data) : entier
+            + search(type, startDate, endDate) : tableau
+            + getMonthlyTotal(year, month) : flottant
+            + getTotalByType(startDate, endDate) : tableau
+            + getYearlyTotal(year) : flottant
+        }
+
+        class "Dépense" as Expense {
+            + recordExpense(data) : entier
+            + search(category, startDate, endDate, status) : tableau
+            + getMonthlyTotal(year, month) : flottant
+            + getTotalByCategory(startDate, endDate) : tableau
+            + getYearlyTotal(year) : flottant
+            + updateStatus(id, status) : booléen
+            + getPendingExpenses() : tableau
+        }
+    }
+}
+
+package "Contrôleurs API" {
+    class "ContrôleurAuth" as AuthController {
+        - userModel : Utilisateur
+        + login()
+        + logout()
+        + profile()
+    }
+
+    class "ContrôleurMembres" as MembersController {
+        - memberModel : Membre
+        - db : PDO
+        + index()
+        + show(id)
+        + create()
+        + update(id)
+        + delete(id)
+    }
+
+    class "ContrôleurFinance" as FinanceController {
+        - titheModel : Dîme
+        - offeringModel : Offrande
+        - memberModel : Membre
+        + tithes()
+        + record_tithe()
+        + offerings()
+        + record_offering()
+        + summary()
+    }
+}
+
+' --- RELATIONS D'HERITAGE ---
+BaseModel <|-- User
+BaseModel <|-- Member
+BaseModel <|-- Tithe
+BaseModel <|-- Offering
+BaseModel <|-- Expense
+
+' --- RELATIONS DE DONNÉES (DB) ---
+Member "1" -right- "0..*" Tithe : "paie"
+User "1" -left- "1" Member : "compte membre"
+Tithe "0..*" -- "1" User : "enregistré par"
+Offering "0..*" -- "1" User : "enregistré par"
+Expense "0..*" -- "1" User : "approuvé par"
+
+' --- DÉPENDANCES CONTROLEURS ---
+AuthController ..> User : "utilise"
+MembersController ..> Member : "utilise"
+FinanceController ..> Tithe : "utilise"
+FinanceController ..> Offering : "utilise"
+
+@enduml

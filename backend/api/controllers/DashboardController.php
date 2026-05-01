@@ -54,20 +54,91 @@ class DashboardController {
 
     private function getChartData($months = 6) {
         $labels = [];
-        $tithes = [];
-        $offerings = [];
-        $expenses = [];
+        $tithes = array_fill(0, $months, 0);
+        $offerings = array_fill(0, $months, 0);
+        $expenses = array_fill(0, $months, 0);
+        
         $current = new DateTimeImmutable('first day of this month');
+        $startDate = $current->modify("-" . ($months - 1) . " months")->format('Y-m-01');
 
+        // Préparer les labels
         for ($i = $months - 1; $i >= 0; $i--) {
-            $month = $current->modify("-{$i} months");
-            $year = $month->format('Y');
-            $monthNum = $month->format('m');
+            $labels[] = $current->modify("-{$i} months")->format('M');
+        }
 
-            $labels[] = $month->format('M');
-            $tithes[] = $this->getValidatedTitheTotal($year, $monthNum);
-            $offerings[] = $this->getValidatedOfferingTotal($year, $monthNum);
-            $expenses[] = $this->getApprovedExpenseTotal($year, $monthNum);
+        // 1. Récupérer toutes les dîmes groupées par mois
+        $titheSql = "
+            SELECT 
+                EXTRACT(YEAR FROM tithe_date) as yr, 
+                EXTRACT(MONTH FROM tithe_date) as mon, 
+                SUM(amount) as total
+            FROM tithes 
+            WHERE tithe_date >= ?
+        ";
+        if ($this->hasColumn('tithes', 'payment_status')) {
+            $titheSql .= " AND payment_status IN ('paid', 'success', 'confirmed')";
+        }
+        $titheSql .= " GROUP BY yr, mon";
+        
+        $stmt = $this->db->prepare($titheSql);
+        $stmt->execute([$startDate]);
+        while ($row = $stmt->fetch()) {
+            $monthObj = new DateTime("{$row['yr']}-{$row['mon']}-01");
+            $diff = $current->diff($monthObj);
+            $index = ($months - 1) - ($diff->y * 12 + $diff->m);
+            if ($index >= 0 && $index < $months) {
+                $tithes[$index] = (float)$row['total'];
+            }
+        }
+
+        // 2. Récupérer toutes les offrandes groupées par mois
+        $offeringSql = "
+            SELECT 
+                EXTRACT(YEAR FROM offering_date) as yr, 
+                EXTRACT(MONTH FROM offering_date) as mon, 
+                SUM(amount) as total
+            FROM offerings 
+            WHERE offering_date >= ?
+        ";
+        if ($this->hasColumn('offerings', 'payment_status')) {
+            $offeringSql .= " AND payment_status IN ('paid', 'success', 'confirmed')";
+        }
+        $offeringSql .= " GROUP BY yr, mon";
+
+        $stmt = $this->db->prepare($offeringSql);
+        $stmt->execute([$startDate]);
+        while ($row = $stmt->fetch()) {
+            $monthObj = new DateTime("{$row['yr']}-{$row['mon']}-01");
+            $diff = $current->diff($monthObj);
+            $index = ($months - 1) - ($diff->y * 12 + $diff->m);
+            if ($index >= 0 && $index < $months) {
+                $offerings[$index] = (float)$row['total'];
+            }
+        }
+
+        // 3. Récupérer toutes les dépenses groupées par mois
+        $expenseSql = "
+            SELECT 
+                EXTRACT(YEAR FROM expense_date) as yr, 
+                EXTRACT(MONTH FROM expense_date) as mon, 
+                SUM(amount) as total
+            FROM expenses 
+            WHERE expense_date >= ?
+        ";
+        if ($this->hasColumn('expenses', 'status')) {
+            $expenseSql .= " AND status = 'approuvee'";
+        }
+        $expenseSql .= " GROUP BY yr, mon";
+
+        $stmt = $this->db->prepare($expenseSql);
+        $stmt->execute([$startDate]);
+        while ($row = $stmt->fetch()) {
+            $monthObj = new DateTime("{$row['yr']}-{$row['mon']}-01");
+            $diff = $current->diff($monthObj);
+            $index = ($months - 1) - ($diff->y * 12 + $diff->m);
+            if ($index >= 0 && $index < $months) {
+                $expenses[$index] = (float)$row['total'];
+            }
         }
 
         return [
@@ -131,31 +202,36 @@ class DashboardController {
         ]);
     }
 
+    private static $cachedColumns = [];
+
     private function hasColumn($table, $column) {
         $cacheKey = $table . '.' . $column;
-        if (array_key_exists($cacheKey, $this->schemaCache)) {
-            return $this->schemaCache[$cacheKey];
+        if (array_key_exists($cacheKey, self::$cachedColumns)) {
+            return self::$cachedColumns[$cacheKey];
         }
 
-        $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
-        if ($driver === 'pgsql') {
-            $sql = "
-                SELECT COUNT(*) FROM information_schema.columns
-                WHERE table_schema = 'public' AND table_name = ? AND column_name = ?
-            ";
-        } else {
-            $sql = "
-                SELECT COUNT(*) FROM information_schema.columns
-                WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
-            ";
+        try {
+            $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            if ($driver === 'pgsql') {
+                $sql = "
+                    SELECT COUNT(*) FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = ? AND column_name = ?
+                ";
+            } else {
+                $sql = "
+                    SELECT COUNT(*) FROM information_schema.columns
+                    WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
+                ";
+            }
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$table, $column]);
+            $exists = (int)$stmt->fetchColumn() > 0;
+            self::$cachedColumns[$cacheKey] = $exists;
+            return $exists;
+        } catch (Exception $e) {
+            return false;
         }
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$table, $column]);
-        $exists = (int)$stmt->fetchColumn() > 0;
-        $this->schemaCache[$cacheKey] = $exists;
-
-        return $exists;
     }
 
     private function getValidatedTitheTotal($year = null, $month = null, $memberId = null) {

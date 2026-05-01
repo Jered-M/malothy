@@ -1,0 +1,68 @@
+@startuml Use_Case_Diagram
+
+' Orientation horizontale (Gauche vers Droite)
+left to right direction
+
+title MALOTHY - Diagramme de Cas d'Utilisation
+
+' Paramètres de rendu standard
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+' Déclaration des acteurs sur le même côté (Gauche)
+actor "Administrateur" as Admin
+actor "Trésorier" as Tresor
+actor "Secrétaire" as Sec
+actor "Membre" as Membre
+
+' Frontière unique du système (Rectangle)
+rectangle "Système MALOTHY" {
+    
+    ' Cas d'utilisation métier
+    usecase "Gérer les comptes" as UC_Users
+    usecase "Gérer les membres" as UC_Members
+    usecase "Enregistrer une dîme" as UC_Tithe
+    usecase "Enregistrer une offrande" as UC_Offering
+    usecase "Gérer les dépenses" as UC_Expense
+    usecase "Générer les rapports" as UC_Reports
+    usecase "Consulter son profil" as UC_Profile
+    usecase "Effectuer un don en ligne" as UC_Don
+    
+    ' Cas d'utilisation de service (Inclusions)
+    usecase "S'authentifier" as UC_Auth
+    usecase "Vérifier les droits" as UC_Rights
+    
+    ' Cas d'utilisation optionnels (Extensions)
+    usecase "Émettre un reçu" as UC_Receipt
+    
+    ' --- RELATIONS LOGIQUES (Inclusions) ---
+    UC_Users ..> UC_Auth : <<include>>
+    UC_Members ..> UC_Auth : <<include>>
+    UC_Tithe ..> UC_Auth : <<include>>
+    UC_Offering ..> UC_Auth : <<include>>
+    UC_Expense ..> UC_Auth : <<include>>
+    UC_Reports ..> UC_Auth : <<include>>
+    UC_Profile ..> UC_Auth : <<include>>
+    
+    UC_Auth ..> UC_Rights : <<include>>
+    
+    ' --- RELATIONS LOGIQUES (Extensions) ---
+    UC_Tithe <.. UC_Receipt : <<extend>>
+    UC_Don <.. UC_Receipt : <<extend>>
+}
+
+' --- ASSOCIATIONS (Acteurs à Gauche -> Système à Droite) ---
+Admin -- UC_Users
+Admin -- UC_Reports
+
+Sec -- UC_Members
+
+Tresor -- UC_Tithe
+Tresor -- UC_Offering
+Tresor -- UC_Expense
+Tresor -- UC_Reports
+
+Membre -- UC_Profile
+Membre -- UC_Don
+
+@enduml

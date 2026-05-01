@@ -1,0 +1,23 @@
+@startuml Sequence_Record_Tithe
+
+title MALOTHY - Enregistrement d'une Dîme
+
+actor Trésorier
+participant "Frontend (SPA)" as UI
+participant "FinanceController" as Finance
+participant "Tithe Model" as Tithe
+database "Base de données" as DB
+
+Trésorier -> UI : Remplit le formulaire de dîme
+UI -> Finance : POST /api/finance/tithes
+Finance -> Finance : checkRole(['admin', 'Trésorier'])
+Finance -> Tithe : recordTithe(data)
+Tithe -> DB : INSERT INTO tithes (...)
+DB --> Tithe : Success (tithe_id)
+Tithe -> Tithe : logAction('CREATE', tithe_id)
+Tithe -> DB : INSERT INTO audit_logs (...)
+Tithe --> Finance : tithe_id
+Finance --> UI : JSON Response {success: true, message: '...'}
+UI -> Trésorier : Message de succès
+
+@enduml

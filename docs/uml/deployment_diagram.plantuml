@@ -1,0 +1,31 @@
+@startuml Deployment_Diagram
+
+title MALOTHY - Diagramme de Déploiement
+
+' Style technique
+skinparam shadowing false
+skinparam node {
+    BackgroundColor White
+    BorderColor #2C3E50
+}
+
+node "Poste Utilisateur (Navigateur)" as Client {
+    artifact "Application Web (JS/CSS/HTML)" as SPA
+}
+
+node "Serveur Web (Apache/Nginx)" as WebServer {
+    node "Moteur PHP 8.x" as PHP {
+        artifact "Backend API (PHP)" as API
+        artifact "Modèles (MVC)" as Models
+    }
+}
+
+database "Serveur MySQL" as DatabaseServer {
+    database "Base de données (eglise_m)" as DB
+}
+
+' Connexions
+Client -- WebServer : HTTP/HTTPS (REST API)
+PHP -- DB : PDO / SQL (Port 3306)
+
+@enduml

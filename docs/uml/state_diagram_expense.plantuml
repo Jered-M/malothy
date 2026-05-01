@@ -1,0 +1,34 @@
+@startuml State_Diagram_Expense
+
+title MALOTHY - Cycle de Vie d'une Dépense (Événements)
+
+' Style visuelle académique
+skinparam shadowing false
+skinparam state {
+    BackgroundColor White
+    BorderColor #2C3E50
+}
+
+[*] --> EnAttente : recordExpense() [Trésorier]
+
+state "En Attente" as EnAttente {
+    EnAttente : Validation requise par l'Admin
+}
+
+EnAttente --> Approuvee : approve() [Admin]
+EnAttente --> Rejetee : reject() [Admin]
+
+state "Approuvée" as Approuvee {
+    Approuvee : Montant déduit du solde
+    Approuvee : Justificatif archivé
+}
+
+state "Rejetée" as Rejetee {
+    Rejetee : Motif de rejet spécifié
+}
+
+Approuvee --> [*] : Clôture
+Rejetee --> EnAttente : updateExpense() [Trésorier]
+Rejetee --> [*] : Suppression
+
+@enduml
