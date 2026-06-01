@@ -52,7 +52,7 @@ class Offering extends BaseModel {
      */
     public function getMonthlyTotal($year, $month) {
         $result = $this->queryOne(
-            "SELECT SUM(amount) as total FROM {$this->table} 
+            "SELECT SUM(CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END) as total FROM {$this->table} 
              WHERE EXTRACT(YEAR FROM offering_date) = ? AND EXTRACT(MONTH FROM offering_date) = ?",
             [$year, $month]
         );
@@ -64,7 +64,7 @@ class Offering extends BaseModel {
      * Total des offrandes par type
      */
     public function getTotalByType($startDate = null, $endDate = null) {
-        $sql = "SELECT type, SUM(amount) as total, COUNT(*) as count FROM {$this->table} WHERE 1=1";
+        $sql = "SELECT type, SUM(CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END) as total, COUNT(*) as count FROM {$this->table} WHERE 1=1";
         $params = [];
 
         if ($startDate) {
@@ -87,7 +87,7 @@ class Offering extends BaseModel {
      */
     public function getYearlyTotal($year) {
         $result = $this->queryOne(
-            "SELECT SUM(amount) as total FROM {$this->table} WHERE EXTRACT(YEAR FROM offering_date) = ?",
+            "SELECT SUM(CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END) as total FROM {$this->table} WHERE EXTRACT(YEAR FROM offering_date) = ?",
             [$year]
         );
 

@@ -71,6 +71,7 @@ class ContactController {
             $settings['contact_recipient_email'] ?? '',
             $settings['smtp_from_email'] ?? '',
             $settings['smtp_username'] ?? '',
+            'minonojered7@gmail.com',
             'contact@malothy-church.org'
         ];
 

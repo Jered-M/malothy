@@ -54,7 +54,7 @@ class Tithe extends BaseModel {
      */
     public function getMonthlyTotal($year, $month) {
         $result = $this->queryOne(
-            "SELECT SUM(amount) as total FROM {$this->table} 
+            "SELECT SUM(CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END) as total FROM {$this->table} 
              WHERE EXTRACT(YEAR FROM tithe_date) = ? AND EXTRACT(MONTH FROM tithe_date) = ?",
             [$year, $month]
         );
@@ -66,7 +66,7 @@ class Tithe extends BaseModel {
      * Total des dîmes par membre
      */
     public function getTithesByMember($memberId, $year = null) {
-        $sql = "SELECT SUM(amount) as total, COUNT(*) as count FROM {$this->table} WHERE member_id = ?";
+        $sql = "SELECT SUM(CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END) as total, COUNT(*) as count FROM {$this->table} WHERE member_id = ?";
         $params = [$memberId];
 
         if ($year) {
@@ -87,7 +87,7 @@ class Tithe extends BaseModel {
      */
     public function getYearlyTotal($year) {
         $result = $this->queryOne(
-            "SELECT SUM(amount) as total FROM {$this->table} WHERE EXTRACT(YEAR FROM tithe_date) = ?",
+            "SELECT SUM(CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END) as total FROM {$this->table} WHERE EXTRACT(YEAR FROM tithe_date) = ?",
             [$year]
         );
 

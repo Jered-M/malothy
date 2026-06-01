@@ -198,12 +198,14 @@ class FinanceController {
             $memberName = $input['member_name'] ?? 'Donateur Anonyme';
 
             // 1. Enregistrer la dîme en DB
+            $autoConfirm = !empty($input['auto_confirm']);
+
             $data = [
                 'member_id' => $memberId,
                 'amount' => $input['amount'],
                 'currency' => $input['currency'] ?? 'CDF',
                 'tithe_date' => $input['tithe_date'],
-                'payment_status' => 'pending',
+                'payment_status' => $autoConfirm ? 'paid' : 'pending',
                 'comment' => ($input['comment'] ?? '') . " | Enregistré via formulaire public",
                 'recorded_by' => null 
             ];
@@ -271,13 +273,15 @@ class FinanceController {
             $memberName = $input['member_name'] ?? 'Donateur Anonyme';
 
             // 1. Enregistrer l'offrande en DB
+            $autoConfirm = !empty($input['auto_confirm']);
+
             $data = [
                 'type' => $input['type'],
                 'member_id' => $memberId,
                 'amount' => $input['amount'],
                 'currency' => $input['currency'] ?? 'CDF',
                 'offering_date' => $input['offering_date'],
-                'payment_status' => 'pending',
+                'payment_status' => $autoConfirm ? 'paid' : 'pending',
                 'description' => ($input['description'] ?? "Offrande de {$memberName}") . ' | Enregistré via formulaire public',
                 'recorded_by' => null // Public
             ];

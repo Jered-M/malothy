@@ -81,6 +81,7 @@ class ExpensesController {
         $data = [
             'category' => $input['category'],
             'amount' => $input['amount'],
+            'currency' => $input['currency'] ?? 'CDF',
             'expense_date' => $input['expense_date'],
             'description' => $input['description'] ?? '',
             'document_path' => $filePath,

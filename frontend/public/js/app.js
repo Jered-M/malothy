@@ -1032,6 +1032,13 @@ class App {
             });
         });
 
+        if (currencyPrefix) {
+            const selectedCurrency = form.querySelector('input[name="currency"]:checked');
+            if (selectedCurrency) {
+                currencyPrefix.textContent = selectedCurrency.value === 'USD' ? '$' : 'FC';
+            }
+        }
+
         typeRadios.forEach(radio => {
             radio.addEventListener('change', (e) => {
                 if (e.target.value === 'offering') {
@@ -1081,6 +1088,8 @@ class App {
                 }
                 
                 let result;
+                const autoConfirm = !!formData.get('auto_confirm');
+
                 if (type === 'tithe') {
                     result = await api.createPublicTithe({
                         member_id: data.member_id,
@@ -1088,7 +1097,8 @@ class App {
                         amount: data.amount,
                         currency: data.currency,
                         tithe_date: data.date,
-                        comment: data.comment
+                        comment: data.comment,
+                        auto_confirm: autoConfirm
                     });
                 } else if (type === 'deposit') {
                     // Pour un dÃ©pÃ´t, on utilise le mÃªme endpoint que l'offrande mais avec un type interne
@@ -1099,7 +1109,8 @@ class App {
                         amount: data.amount,
                         currency: data.currency,
                         offering_date: data.date,
-                        description: `DÃ‰PÃ”T - ${data.member_name} - ${data.comment || ''}`
+                        description: `DÃ‰PÃ”T - ${data.member_name} - ${data.comment || ''}`,
+                        auto_confirm: autoConfirm
                     });
                 } else {
                     result = await api.createPublicOffering({
@@ -1109,7 +1120,8 @@ class App {
                         amount: data.amount,
                         currency: data.currency,
                         offering_date: data.date,
-                        description: `OFFRANDE (${formData.get('type')}) - ${data.member_name} - ${data.comment || ''}`
+                        description: `OFFRANDE (${formData.get('type')}) - ${data.member_name} - ${data.comment || ''}`,
+                        auto_confirm: autoConfirm
                     });
                 }
 

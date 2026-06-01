@@ -4,9 +4,13 @@
 
 -- Types ENUM personnalisés
 CREATE TYPE user_role AS ENUM ('admin', 'trésorier', 'secrétaire');
+
 CREATE TYPE user_status AS ENUM ('actif', 'inactif');
+
 CREATE TYPE member_status AS ENUM ('actif', 'inactif', 'suspendu');
+
 CREATE TYPE expense_status AS ENUM ('en attente', 'approuvee', 'rejetee');
+
 CREATE TYPE offering_type AS ENUM ('culte', 'evenement', 'mission', 'cotisation', 'autre');
 
 -- TABLE: users
@@ -22,8 +26,9 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_user_email ON users(email);
-CREATE INDEX idx_user_role ON users(role);
+CREATE INDEX idx_user_email ON users (email);
+
+CREATE INDEX idx_user_role ON users (role);
 
 -- TABLE: members
 CREATE TABLE members (
@@ -41,13 +46,14 @@ CREATE TABLE members (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_member_name ON members(first_name, last_name);
-CREATE INDEX idx_member_status ON members(status);
+CREATE INDEX idx_member_name ON members (first_name, last_name);
+
+CREATE INDEX idx_member_status ON members (status);
 
 -- TABLE: tithes
 CREATE TABLE tithes (
     id SERIAL PRIMARY KEY,
-    member_id INTEGER REFERENCES members(id) ON DELETE SET NULL,
+    member_id INTEGER REFERENCES members (id) ON DELETE SET NULL,
     amount DECIMAL(10, 2) NOT NULL,
     currency VARCHAR(3) DEFAULT 'CDF',
     tithe_date DATE NOT NULL,
@@ -55,10 +61,10 @@ CREATE TABLE tithes (
     transaction_id VARCHAR(100),
     comment TEXT,
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+    recorded_by INTEGER REFERENCES users (id) ON DELETE SET NULL
 );
 
-CREATE INDEX idx_tithe_date ON tithes(tithe_date);
+CREATE INDEX idx_tithe_date ON tithes (tithe_date);
 
 -- TABLE: offerings
 CREATE TABLE offerings (
@@ -71,10 +77,10 @@ CREATE TABLE offerings (
     transaction_id VARCHAR(100),
     description TEXT,
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+    recorded_by INTEGER REFERENCES users (id) ON DELETE SET NULL
 );
 
-CREATE INDEX idx_offering_date ON offerings(offering_date);
+CREATE INDEX idx_offering_date ON offerings (offering_date);
 
 -- TABLE: expenses
 CREATE TABLE expenses (
@@ -86,19 +92,20 @@ CREATE TABLE expenses (
     document_path VARCHAR(255),
     status expense_status DEFAULT 'en attente',
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    recorded_by INTEGER REFERENCES users (id) ON DELETE SET NULL,
+    approved_by INTEGER REFERENCES users (id) ON DELETE SET NULL,
     approval_date TIMESTAMP,
     rejection_reason TEXT
 );
 
-CREATE INDEX idx_expense_status ON expenses(status);
-CREATE INDEX idx_expense_date ON expenses(expense_date);
+CREATE INDEX idx_expense_status ON expenses (status);
+
+CREATE INDEX idx_expense_date ON expenses (expense_date);
 
 -- TABLE: audit_logs
 CREATE TABLE audit_logs (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    user_id INTEGER REFERENCES users (id) ON DELETE SET NULL,
     action VARCHAR(50) NOT NULL,
     table_name VARCHAR(100),
     record_id INTEGER,
@@ -117,12 +124,62 @@ CREATE TABLE settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE home_publications (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    period VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    image_url TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    published_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- DONNÉES INITIALES (Exemple)
-INSERT INTO users (name, email, password, role, status)
-VALUES ('Administrateur', 'admin@maloty.com', '$2y$12$5RRkMsNu7e1Sx8fxFUM/i.5tPT6mv2D97UWiCpEXlJB5xRqYYy7j.', 'admin', 'actif');
+INSERT INTO
+    users (
+        name,
+        email,
+        password,
+        role,
+        status
+    )
+VALUES (
+        'Administrateur',
+        'admin@maloty.com',
+        '$2y$12$5RRkMsNu7e1Sx8fxFUM/i.5tPT6mv2D97UWiCpEXlJB5xRqYYy7j.',
+        'admin',
+        'actif'
+    );
 
-INSERT INTO users (name, email, password, role, status)
-VALUES ('Trésorier', 'treasure@maloty.com', '$2y$12$X94B/Wo.RvINSjw3oT7kT.myY5N4ld44pjHqVhp4BJVgQJEY6efxm', 'trésorier', 'actif');
+INSERT INTO
+    users (
+        name,
+        email,
+        password,
+        role,
+        status
+    )
+VALUES (
+        'Trésorier',
+        'treasure@maloty.com',
+        '$2y$12$X94B/Wo.RvINSjw3oT7kT.myY5N4ld44pjHqVhp4BJVgQJEY6efxm',
+        'trésorier',
+        'actif'
+    );
 
-INSERT INTO users (name, email, password, role, status)
-VALUES ('Secrétaire', 'secretary@maloty.com', '$2y$12$o7V7U/0x7vk7jlQCm8lZeuZY/dJlyp7d2j.EOnbZAHU4GWLT7ihn6', 'secrétaire', 'actif');
+INSERT INTO
+    users (
+        name,
+        email,
+        password,
+        role,
+        status
+    )
+VALUES (
+        'Secrétaire',
+        'secretary@maloty.com',
+        '$2y$12$o7V7U/0x7vk7jlQCm8lZeuZY/dJlyp7d2j.EOnbZAHU4GWLT7ihn6',
+        'secrétaire',
+        'actif'
+    );

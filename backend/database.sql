@@ -160,6 +160,22 @@ CREATE TABLE settings (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- ============================================================================
+-- TABLE: home_publications
+-- ============================================================================
+CREATE TABLE home_publications (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    period VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    image_url TEXT NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_home_publications_sort_order (sort_order),
+    INDEX idx_home_publications_published_at (published_at)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ============================================================================
 -- DONNÉES INITIALES
 -- ============================================================================
 

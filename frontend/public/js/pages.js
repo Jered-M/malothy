@@ -20,28 +20,37 @@ class Pages {
         return items.length ? this.sum(items, key) / items.length : 0;
     }
 
-    static formatMoney(amount) {
+    static formatMoney(amount, currency = 'CDF') {
+        const cur = (currency && currency.toUpperCase() === 'USD') ? 'USD' : 'CDF';
+        const value = this.toNumber(amount);
+
+        if (cur === 'USD') {
+            return `${new Intl.NumberFormat('fr-FR', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(value)} $US`;
+        }
+
         return new Intl.NumberFormat('fr-FR', {
             style: 'currency',
             currency: 'CDF',
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
-        }).format(this.toNumber(amount));
+        }).format(value);
     }
 
     static formatMoneyUSD(amount) {
-        return new Intl.NumberFormat('fr-FR', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(this.toNumber(amount));
+        return this.formatMoney(amount, 'USD');
     }
 
     static convertToUSD(amount) {
-        const rate = window.APP_EXCHANGE_RATE_CDF_USD || 2800;
-        return this.toNumber(amount) / rate;
+        const rate = window.APP_EXCHANGE_RATE_CDF_USD ?? 2800;
+        const numeric = this.toNumber(amount);
+
+        if (!rate || !Number.isFinite(rate)) return numeric / 2800;
+        return numeric / rate;
     }
+
 
     static formatDate(value, options = { day: '2-digit', month: 'short', year: 'numeric' }) {
         if (!value) {
@@ -297,9 +306,9 @@ class Pages {
 
                     <section class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
                         ${UI.statCard('Membres actifs', activeMembers, 'fa-users', 'brand', `Total: ${totalMembers}`)}
-                        ${UI.statCard('Dîmes du mois', this.formatMoney(stats.monthlyTithes || 0), 'fa-hand-holding-heart', 'emerald')}
-                        ${UI.statCard('Offrandes du mois', this.formatMoney(stats.monthlyOfferings || 0), 'fa-donate', 'brand')}
-                        ${UI.statCard('Solde actuel', this.formatMoney(balance), 'fa-wallet', balance >= 0 ? 'emerald' : 'rose')}
+                        ${UI.statCard('Dîmes du mois', this.formatMoney(stats.monthlyTithes || 0), 'fa-hand-holding-heart', 'emerald', this.formatMoneyUSD(this.convertToUSD(stats.monthlyTithes || 0)))}
+                        ${UI.statCard('Offrandes du mois', this.formatMoney(stats.monthlyOfferings || 0), 'fa-donate', 'brand', this.formatMoneyUSD(this.convertToUSD(stats.monthlyOfferings || 0)))}
+                        ${UI.statCard('Solde actuel', this.formatMoney(balance), 'fa-wallet', balance >= 0 ? 'emerald' : 'rose', this.formatMoneyUSD(this.convertToUSD(balance)))}
                     </section>
 
                     <section class="flex flex-col gap-8">
@@ -708,9 +717,9 @@ class Pages {
                     })}
 
                     <section class="grid grid-cols-1 gap-5 md:grid-cols-3">
-                        ${UI.statCard('Dîmes cumulées', this.formatMoney(totalTithes), 'fa-hand-holding-heart', 'emerald', `${tithes.length} enregistrement(s)`)}
-                        ${UI.statCard('Offrandes cumulées', this.formatMoney(totalOfferings), 'fa-gift', 'brand', `${offerings.length} entrée(s)`)}
-                        ${UI.statCard('Total consolidé', this.formatMoney(totalIncome), 'fa-coins', 'amber', topOffering ? `Type dominant : ${this.formatLabel(topOffering.label)}` : 'Aucune ventilation disponible')}
+                        ${UI.statCard('Dîmes cumulées', this.formatMoney(totalTithes), 'fa-hand-holding-heart', 'emerald', `${tithes.length} enregistrement(s) (${this.formatMoneyUSD(this.convertToUSD(totalTithes))})`)}
+                        ${UI.statCard('Offrandes cumulées', this.formatMoney(totalOfferings), 'fa-gift', 'brand', `${offerings.length} entrée(s) (${this.formatMoneyUSD(this.convertToUSD(totalOfferings))})`)}
+                        ${UI.statCard('Total consolidé', this.formatMoney(totalIncome), 'fa-coins', 'amber', `Total : ${this.formatMoneyUSD(this.convertToUSD(totalIncome))} | ${topOffering ? `Type dominant : ${this.formatLabel(topOffering.label)}` : 'Aucune ventilation'}`)}
                     </section>
 
                     <section class="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr,0.85fr]">
@@ -728,14 +737,14 @@ class Pages {
                                         <strong>Ticket moyen dîme</strong>
                                         <span>Montant moyen par enregistrement</span>
                                     </div>
-                                    <b>${this.formatMoney(this.average(tithes, 'amount'))}</b>
+                                    <b>${this.formatMoney(this.average(tithes, 'amount'))} (${this.formatMoneyUSD(this.convertToUSD(this.average(tithes, 'amount')))})</b>
                                 </div>
                                 <div class="summary-row">
                                     <div>
                                         <strong>Ticket moyen offrande</strong>
                                         <span>Montant moyen par collecte</span>
                                     </div>
-                                    <b>${this.formatMoney(this.average(offerings, 'amount'))}</b>
+                                    <b>${this.formatMoney(this.average(offerings, 'amount'))} (${this.formatMoneyUSD(this.convertToUSD(this.average(offerings, 'amount')))})</b>
                                 </div>
                                 <div class="summary-row">
                                     <div>
@@ -780,7 +789,7 @@ class Pages {
                     })}
 
                     <section class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
-                        ${UI.statCard('Montant total', this.formatMoney(totalExpenses), 'fa-wallet', 'rose', `${expenses.length} dépense(s) enregistrée(s)`)}
+                        ${UI.statCard('Montant total', this.formatMoney(totalExpenses), 'fa-wallet', 'rose', `${expenses.length} dépense(s) (${this.formatMoneyUSD(this.convertToUSD(totalExpenses))})`)}
                         ${UI.statCard('En attente', pendingCount, 'fa-hourglass-half', 'amber', 'Demandes à examiner')}
                         ${UI.statCard('Approuvées', approvedCount, 'fa-circle-check', 'emerald', 'Sorties validées')}
                         ${UI.statCard('Rejetées', rejectedCount, 'fa-circle-xmark', 'rose', 'Sorties refusées')}
@@ -832,7 +841,7 @@ class Pages {
                                                                 </td>
                                                                 <td>${UI.statusBadge(expense.status || 'en attente')}</td>
                                                                 <td class="text-right">
-                                                                    <p class="table-name">${this.formatMoney(expense.amount)}</p>
+                                                                    <p class="table-name">${this.formatMoney(expense.amount, expense.currency)}</p>
                                                                 </td>
                                                                 ${
                                                                     user.role === 'admin' && (expense.status === 'en attente' || !expense.status)
@@ -904,9 +913,9 @@ class Pages {
                     })}
 
                     <section class="grid grid-cols-1 gap-5 md:grid-cols-3">
-                        ${UI.statCard('Montant cumulé', this.formatMoney(totalTithes), 'fa-sack-dollar', 'emerald', 'Total de la liste courante')}
+                        ${UI.statCard('Montant cumulé', this.formatMoney(totalTithes), 'fa-sack-dollar', 'emerald', `Total de la liste (${this.formatMoneyUSD(this.convertToUSD(totalTithes))})`)}
                         ${UI.statCard('Entrées', tithes.length, 'fa-list-check', 'brand', 'Nombre d’enregistrements')}
-                        ${UI.statCard('Ticket moyen', this.formatMoney(this.average(tithes, 'amount')), 'fa-chart-column', 'amber', 'Montant moyen par dîme')}
+                        ${UI.statCard('Ticket moyen', this.formatMoney(this.average(tithes, 'amount')), 'fa-chart-column', 'amber', `Moyenne : ${this.formatMoneyUSD(this.convertToUSD(this.average(tithes, 'amount')))}`)}
                     </section>
 
                     ${
@@ -951,7 +960,7 @@ class Pages {
                                                                 </td>
                                                                 <td>${this.formatDate(tithe.tithe_date)}</td>
                                                                 <td class="text-right">
-                                                                    <p class="table-name text-emerald-700">${this.formatMoney(tithe.amount)}</p>
+                                                                    <p class="table-name text-emerald-700">${this.formatMoney(tithe.amount, tithe.currency)}</p>
                                                                 </td>
                                                             </tr>
                                                         `
@@ -1026,8 +1035,14 @@ class Pages {
                             </div>
                             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                                 <div>
-                                    <label class="field-label" for="tithe_amount">Montant (CDF)</label>
-                                    <input id="tithe_amount" name="amount" type="number" min="0" class="pro-input" placeholder="0" required>
+                                    <label class="field-label" for="tithe_amount">Montant</label>
+                                    <div class="flex gap-2 items-center">
+                                        <input id="tithe_amount" name="amount" type="number" min="0" class="pro-input flex-1" placeholder="0" required>
+                                        <select id="tithe_currency" name="currency" class="pro-input w-24 shrink-0" title="Devise">
+                                            <option value="CDF" selected>CDF</option>
+                                            <option value="USD">USD $</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="field-label" for="tithe_date">Date</label>
@@ -1194,9 +1209,9 @@ class Pages {
                     })}
 
                     <section class="grid grid-cols-1 gap-5 md:grid-cols-3">
-                        ${UI.statCard('Recettes du mois', this.formatMoney(income), 'fa-coins', 'brand', 'Dîmes et offrandes cumulées')}
-                        ${UI.statCard('Dépenses du mois', this.formatMoney(expenses), 'fa-file-invoice-dollar', 'rose', 'Sorties constatées')}
-                        ${UI.statCard('Balance', this.formatMoney(balance), 'fa-scale-balanced', balance >= 0 ? 'emerald' : 'rose', balance >= 0 ? 'Excédent courant' : 'Déficit courant')}
+                        ${UI.statCard('Recettes du mois', this.formatMoney(income), 'fa-coins', 'brand', `Cumul : ${this.formatMoneyUSD(this.convertToUSD(income))}`)}
+                        ${UI.statCard('Dépenses du mois', this.formatMoney(expenses), 'fa-file-invoice-dollar', 'rose', `Constatées : ${this.formatMoneyUSD(this.convertToUSD(expenses))}`)}
+                        ${UI.statCard('Balance', this.formatMoney(balance), 'fa-scale-balanced', balance >= 0 ? 'emerald' : 'rose', `Balance : ${this.formatMoneyUSD(this.convertToUSD(balance))}`)}
                     </section>
 
                     <h2 class="text-2xl font-black text-slate-950 mt-8 mb-4">Téléchargements</h2>
@@ -1312,9 +1327,9 @@ class Pages {
                     })}
 
                     <section class="grid grid-cols-1 gap-5 md:grid-cols-3">
-                        ${UI.statCard('Montant cumulé', this.formatMoney(totalOfferings), 'fa-gift', 'brand', 'Total de la liste courante')}
+                        ${UI.statCard('Montant cumulé', this.formatMoney(totalOfferings), 'fa-gift', 'brand', `Total de la liste (${this.formatMoneyUSD(this.convertToUSD(totalOfferings))})`)}
                         ${UI.statCard('Entrées', offerings.length, 'fa-list-check', 'emerald', 'Collectes enregistrées')}
-                        ${UI.statCard('Type dominant', topType ? this.formatLabel(topType.label) : 'N/A', 'fa-layer-group', 'amber', topType ? this.formatMoney(topType.amount) : 'Aucune ventilation')}
+                        ${UI.statCard('Type dominant', topType ? this.formatLabel(topType.label) : 'N/A', 'fa-layer-group', 'amber', topType ? `Total type : ${this.formatMoneyUSD(this.convertToUSD(topType.amount))}` : 'Aucune ventilation')}
                     </section>
 
                     ${
@@ -1351,7 +1366,7 @@ class Pages {
                                                                 </td>
                                                                 <td>${this.formatDate(offering.offering_date)}</td>
                                                                 <td class="text-right">
-                                                                    <p class="table-name">${this.formatMoney(offering.amount)}</p>
+                                                                    <p class="table-name">${this.formatMoney(offering.amount, offering.currency)}</p>
                                                                 </td>
                                                             </tr>
                                                         `
@@ -1412,8 +1427,14 @@ class Pages {
                             </div>
                             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                                 <div>
-                                    <label class="field-label" for="offering_amount">Montant (CDF)</label>
-                                    <input id="offering_amount" name="amount" type="number" min="0" class="pro-input" placeholder="0" required>
+                                    <label class="field-label" for="offering_amount">Montant</label>
+                                    <div class="flex gap-2 items-center">
+                                        <input id="offering_amount" name="amount" type="number" min="0" class="pro-input flex-1" placeholder="0" required>
+                                        <select id="offering_currency" name="currency" class="pro-input w-24 shrink-0" title="Devise">
+                                            <option value="CDF" selected>CDF</option>
+                                            <option value="USD">USD $</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="field-label" for="offering_date">Date</label>
@@ -1502,8 +1523,14 @@ class Pages {
                             </div>
                             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                                 <div>
-                                    <label class="field-label" for="expense_amount">Montant (CDF)</label>
-                                    <input id="expense_amount" name="amount" type="number" min="0" class="pro-input" placeholder="0" required>
+                                    <label class="field-label" for="expense_amount">Montant</label>
+                                    <div class="flex gap-2 items-center">
+                                        <input id="expense_amount" name="amount" type="number" min="0" class="pro-input flex-1" placeholder="0" required>
+                                        <select id="expense_currency" name="currency" class="pro-input w-24 shrink-0" title="Devise">
+                                            <option value="CDF" selected>CDF</option>
+                                            <option value="USD">USD $</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="field-label" for="expense_date">Date</label>
@@ -1780,7 +1807,7 @@ class Pages {
                                     <i class="fas fa-rotate-left"></i>
                                     <span>Vider le formulaire</span>
                                 </button>
-                                <p class="text-xs font-medium text-slate-400">Maximum 6 publications visibles sur l accueil.</p>
+                                <p class="text-xs font-medium text-slate-400">Toutes les publications seront affichées sur la page d accueil.</p>
                             </div>
                         </form>
 
@@ -1884,7 +1911,7 @@ class Pages {
                                     </div>
                                     <div class="md:col-span-2">
                                         <label class="field-label" for="contact_recipient_email">Email destinataire des messages de contact</label>
-                                        <input id="contact_recipient_email" name="contact_recipient_email" type="email" class="pro-input" placeholder="contact@malothy-church.org" value="${settings.contact_recipient_email || ''}">
+                                        <input id="contact_recipient_email" name="contact_recipient_email" type="email" class="pro-input" placeholder="minonojered7@gmail.com" value="${settings.contact_recipient_email || ''}">
                                     </div>
                                     <div class="md:col-span-2">
                                         <label class="field-label" for="password_notification_email">Email destinataire des mots de passe membres</label>
@@ -2087,10 +2114,11 @@ class Pages {
                                             </label>
                                             <label class="currency-option">
                                                 <input type="radio" name="currency" value="USD" class="hidden">
-                                                <span class="currency-label">USD</span>
+                                                <span class="currency-label">USD $</span>
                                             </label>
                                         </div>
                                     </div>
+                                    <p class="text-[10px] text-slate-500 px-1">Dépôt et contribution possibles en CDF ou USD.</p>
 
                                     <div class="relative group">
                                         <div class="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
@@ -2115,6 +2143,10 @@ class Pages {
 
                                 <!-- Bouton Submit -->
                                 <div class="pt-6 space-y-6">
+                                    <div class="flex items-center gap-3">
+                                        <input type="checkbox" name="auto_confirm" id="auto_confirm" class="h-4 w-4">
+                                        <label for="auto_confirm" class="text-sm text-slate-500">Auto-confirmer (sandbox)</label>
+                                    </div>
                                     <button type="submit" class="cta-button w-full bg-slate-950 text-white rounded-[24px] py-6 font-black text-lg flex items-center justify-center gap-4 shadow-2xl shadow-slate-200 hover:-translate-y-1 active:scale-[0.98] transition-all">
                                         <span>Confirmer & Payer</span>
                                         <i class="fas fa-paper-plane text-brand-400"></i>
@@ -2414,7 +2446,7 @@ class Pages {
                                     </div>
                                     <div>
                                         <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Email</p>
-                                        <p class="text-lg text-slate-900 font-bold">contact@malothy-church.org</p>
+                                        <p class="text-lg text-slate-900 font-bold">minonojered7@gmail.com</p>
                                     </div>
                                 </div>
                             </div>
@@ -2571,8 +2603,8 @@ class Pages {
                     })}
 
                     <section class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-                        ${UI.statCard('Mes dîmes cumulées', this.formatMoney(stats.totalTithes), 'fa-coins', 'emerald', 'Total de vos versements')}
-                        ${UI.statCard('Mes offrandes', this.formatMoney(stats.totalOfferings), 'fa-gift', 'brand', 'Dons et collectes')}
+                        ${UI.statCard('Mes dîmes cumulées', this.formatMoney(stats.totalTithes), 'fa-coins', 'emerald', `Total de vos versements (${this.formatMoneyUSD(this.convertToUSD(stats.totalTithes))})`)}
+                        ${UI.statCard('Mes offrandes', this.formatMoney(stats.totalOfferings), 'fa-gift', 'brand', `Dons et collectes (${this.formatMoneyUSD(this.convertToUSD(stats.totalOfferings))})`)}
                         ${UI.statCard('Statut compte', this.formatLabel(member.status || 'actif'), 'fa-user-shield', 'amber', 'État de votre fiche membre')}
                     </section>
 
@@ -2599,7 +2631,7 @@ class Pages {
                                         <tr>
                                             <td class="font-bold">${c.type}</td>
                                             <td>${this.formatDate(c.date_val || c.date)}</td>
-                                            <td class="text-right font-black">${this.toNumber(c.amount).toLocaleString()}</td>
+                                            <td class="text-right font-black">${this.formatMoney(c.amount, c.currency)}</td>
                                             <td>${c.currency}</td>
                                             <td>${UI.badge('Validé', 'emerald')}</td>
                                         </tr>

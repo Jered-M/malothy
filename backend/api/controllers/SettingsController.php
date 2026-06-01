@@ -5,13 +5,16 @@
  */
 
 require_once PROJECT_ROOT . '/backend/config/mime.php';
+require_once PROJECT_ROOT . '/backend/models/HomePublication.php';
 
 class SettingsController {
     private $db;
     private $settingsColumns = null;
+    private $homePublicationModel;
 
     public function __construct() {
         $this->db = Database::getInstance()->getConnection();
+        $this->homePublicationModel = new HomePublication();
     }
 
     /**
@@ -81,7 +84,7 @@ class SettingsController {
         if ($method === 'GET') {
             json_response([
                 'success' => true,
-                'data' => $this->getHomeEventsSetting()
+                'data' => $this->getHomeEventsFromDatabase()
             ]);
         }
 
@@ -116,13 +119,9 @@ class SettingsController {
             ];
         }
 
-        $normalized = array_slice($normalized, 0, 6);
-
-        $this->saveSetting(
-            'homepage_events',
-            json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-            'Evenements publies sur la page d accueil'
-        );
+        if (!$this->saveHomeEventsToDatabase($normalized)) {
+            json_error('Impossible d enregistrer les publications', 500);
+        }
 
         json_response([
             'success' => true,
@@ -191,6 +190,126 @@ class SettingsController {
         ]);
     }
 
+    private function getHomeEventsFromDatabase() {
+        if (!$this->ensureHomePublicationsTable()) {
+            return $this->getHomeEventsSetting();
+        }
+
+        if ($this->homePublicationModel->count() === 0) {
+            $this->migrateHomeEventsSettingToDatabase();
+        }
+
+        $events = $this->homePublicationModel->findLatest();
+        if (!is_array($events)) {
+            return $this->getHomeEventsSetting();
+        }
+
+        return $events;
+    }
+
+    private function saveHomeEventsToDatabase(array $events) {
+        if (!$this->ensureHomePublicationsTable()) {
+            return $this->saveSetting(
+                'homepage_events',
+                json_encode($events, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            );
+        }
+
+        try {
+            $this->db->beginTransaction();
+            $this->homePublicationModel->clearAll();
+
+            $stmt = $this->db->prepare(
+                'INSERT INTO home_publications (title, period, description, image_url, sort_order, published_at) VALUES (?, ?, ?, ?, ?, ?)'
+            );
+
+            foreach ($events as $index => $event) {
+                $stmt->execute([
+                    $event['title'],
+                    $event['period'],
+                    $event['description'],
+                    $event['image_url'],
+                    $index,
+                    date('Y-m-d H:i:s')
+                ]);
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            return false;
+        }
+    }
+
+    private function migrateHomeEventsSettingToDatabase() {
+        $events = $this->getHomeEventsSetting();
+        if (!is_array($events) || count($events) === 0) {
+            return;
+        }
+
+        $this->saveHomeEventsToDatabase($events);
+    }
+
+    private function ensureHomePublicationsTable() {
+        if ($this->tableExists('home_publications')) {
+            return true;
+        }
+
+        $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        try {
+            if ($driver === 'pgsql') {
+                $sql = "CREATE TABLE IF NOT EXISTS home_publications (
+                    id SERIAL PRIMARY KEY,
+                    title VARCHAR(255) NOT NULL,
+                    period VARCHAR(255) NOT NULL,
+                    description TEXT NOT NULL,
+                    image_url TEXT NOT NULL,
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    published_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )";
+            } else {
+                $sql = "CREATE TABLE IF NOT EXISTS home_publications (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    title VARCHAR(255) NOT NULL,
+                    period VARCHAR(255) NOT NULL,
+                    description TEXT NOT NULL,
+                    image_url TEXT NOT NULL,
+                    sort_order INT NOT NULL DEFAULT 0,
+                    published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_home_publications_sort_order (sort_order),
+                    INDEX idx_home_publications_published_at (published_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+            }
+
+            $this->db->exec($sql);
+            return true;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    private function tableExists($tableName) {
+        try {
+            $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            if ($driver === 'pgsql') {
+                $stmt = $this->db->prepare(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = ?"
+                );
+            } else {
+                $stmt = $this->db->prepare(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?"
+                );
+            }
+            $stmt->execute([$tableName]);
+            return (bool)$stmt->fetchColumn();
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
     private function getHomeEventsSetting() {
         $raw = $this->getSettingValue('homepage_events');
         if ($raw === null || $raw === '') {
@@ -249,8 +368,7 @@ class SettingsController {
                 SET ' . implode(', ', $setClauses) . '
                 WHERE setting_key = ?
             ');
-            $stmt->execute($params);
-            return;
+            return $stmt->execute($params);
         }
 
         $columns = ['setting_key', 'setting_value'];
@@ -267,7 +385,7 @@ class SettingsController {
             INSERT INTO settings (' . implode(', ', $columns) . ')
             VALUES (' . implode(', ', $placeholders) . ')
         ');
-        $stmt->execute($params);
+        return $stmt->execute($params);
     }
 
     private function hasSettingsColumn($columnName) {

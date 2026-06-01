@@ -30,10 +30,33 @@ class DashboardController {
     public function index() {
         checkRole(['admin', 'tresorier', 'secretaire']);
 
+        // Simple file-cache to reduce DB load for frequent dashboard refreshes
+        $cacheFile = PROJECT_ROOT . '/tmp/dashboard_cache.json';
+        $cacheTtl = 30; // seconds
+        if (file_exists($cacheFile)) {
+            $cached = @json_decode(@file_get_contents($cacheFile), true);
+            if (!empty($cached['ts']) && (time() - $cached['ts'] < $cacheTtl)) {
+                json_response([
+                    'success' => true,
+                    'stats' => $cached['stats'],
+                    'chartData' => $cached['chartData'],
+                    'cached' => true
+                ]);
+                return;
+            }
+        }
+
+        $stats = $this->getStats();
+        $chartData = $this->getChartData(6);
+
+        // write cache (best-effort)
+        @file_put_contents($cacheFile, json_encode(['ts' => time(), 'stats' => $stats, 'chartData' => $chartData]));
+
         json_response([
             'success' => true,
-            'stats' => $this->getStats(),
-            'chartData' => $this->getChartData(6)
+            'stats' => $stats,
+            'chartData' => $chartData,
+            'cached' => false
         ]);
     }
 
@@ -67,21 +90,24 @@ class DashboardController {
         }
 
         // 1. Récupérer toutes les dîmes groupées par mois
+        $titheCurrencyExpr = $this->hasColumn('tithes', 'currency') ? "CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END" : "amount";
+        // Use BETWEEN start and end dates to leverage possible index on tithe_date
         $titheSql = "
             SELECT 
                 EXTRACT(YEAR FROM tithe_date) as yr, 
                 EXTRACT(MONTH FROM tithe_date) as mon, 
-                SUM(amount) as total
+                SUM({$titheCurrencyExpr}) as total
             FROM tithes 
-            WHERE tithe_date >= ?
+            WHERE tithe_date BETWEEN ? AND ?
         ";
         if ($this->hasColumn('tithes', 'payment_status')) {
-            $titheSql .= " AND payment_status IN ('paid', 'success', 'confirmed')";
+            $titheSql .= " AND (payment_status IS NULL OR payment_status NOT IN ('failed', 'cancelled', 'rejected', 'error'))";
         }
         $titheSql .= " GROUP BY yr, mon";
         
+        $endDate = $current->format('Y-m-t');
         $stmt = $this->db->prepare($titheSql);
-        $stmt->execute([$startDate]);
+        $stmt->execute([$startDate, $endDate]);
         while ($row = $stmt->fetch()) {
             $monthObj = new DateTime("{$row['yr']}-{$row['mon']}-01");
             $diff = $current->diff($monthObj);
@@ -92,21 +118,22 @@ class DashboardController {
         }
 
         // 2. Récupérer toutes les offrandes groupées par mois
+        $offeringCurrencyExpr = $this->hasColumn('offerings', 'currency') ? "CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END" : "amount";
         $offeringSql = "
             SELECT 
                 EXTRACT(YEAR FROM offering_date) as yr, 
                 EXTRACT(MONTH FROM offering_date) as mon, 
-                SUM(amount) as total
+                SUM({$offeringCurrencyExpr}) as total
             FROM offerings 
-            WHERE offering_date >= ?
+            WHERE offering_date BETWEEN ? AND ?
         ";
         if ($this->hasColumn('offerings', 'payment_status')) {
-            $offeringSql .= " AND payment_status IN ('paid', 'success', 'confirmed')";
+            $offeringSql .= " AND (payment_status IS NULL OR payment_status NOT IN ('failed', 'cancelled', 'rejected', 'error'))";
         }
         $offeringSql .= " GROUP BY yr, mon";
 
         $stmt = $this->db->prepare($offeringSql);
-        $stmt->execute([$startDate]);
+        $stmt->execute([$startDate, $endDate]);
         while ($row = $stmt->fetch()) {
             $monthObj = new DateTime("{$row['yr']}-{$row['mon']}-01");
             $diff = $current->diff($monthObj);
@@ -117,21 +144,22 @@ class DashboardController {
         }
 
         // 3. Récupérer toutes les dépenses groupées par mois
+        $expenseCurrencyExpr = $this->hasColumn('expenses', 'currency') ? "CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END" : "amount";
         $expenseSql = "
             SELECT 
                 EXTRACT(YEAR FROM expense_date) as yr, 
                 EXTRACT(MONTH FROM expense_date) as mon, 
-                SUM(amount) as total
+                SUM({$expenseCurrencyExpr}) as total
             FROM expenses 
-            WHERE expense_date >= ?
+            WHERE expense_date BETWEEN ? AND ?
         ";
         if ($this->hasColumn('expenses', 'status')) {
-            $expenseSql .= " AND status = 'approuvee'";
+            $expenseSql .= " AND (status IS NULL OR status::text != 'rejetee')";
         }
         $expenseSql .= " GROUP BY yr, mon";
 
         $stmt = $this->db->prepare($expenseSql);
-        $stmt->execute([$startDate]);
+        $stmt->execute([$startDate, $endDate]);
         while ($row = $stmt->fetch()) {
             $monthObj = new DateTime("{$row['yr']}-{$row['mon']}-01");
             $diff = $current->diff($monthObj);
@@ -231,7 +259,8 @@ class DashboardController {
     }
 
     private function getValidatedTitheTotal($year = null, $month = null, $memberId = null) {
-        $sql = 'SELECT COALESCE(SUM(amount), 0) FROM tithes WHERE 1=1';
+        $currencyExpr = $this->hasColumn('tithes', 'currency') ? "CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END" : "amount";
+        $sql = "SELECT COALESCE(SUM({$currencyExpr}), 0) FROM tithes WHERE 1=1";
         $params = [];
 
         if ($memberId !== null) {
@@ -239,18 +268,20 @@ class DashboardController {
             $params[] = $memberId;
         }
 
-        if ($year !== null) {
+        if ($year !== null && $month !== null) {
+            // Use date range for faster queries (can use index on tithe_date)
+            $start = sprintf('%04d-%02d-01', $year, $month);
+            $end = date('Y-m-d', strtotime($start . ' +1 month'));
+            $sql .= ' AND tithe_date >= ? AND tithe_date < ?';
+            $params[] = $start;
+            $params[] = $end;
+        } elseif ($year !== null) {
             $sql .= ' AND EXTRACT(YEAR FROM tithe_date) = ?';
             $params[] = $year;
         }
 
-        if ($month !== null) {
-            $sql .= ' AND EXTRACT(MONTH FROM tithe_date) = ?';
-            $params[] = (int)$month;
-        }
-
         if ($this->hasColumn('tithes', 'payment_status')) {
-            $sql .= " AND payment_status IN ('paid', 'success')";
+            $sql .= " AND (payment_status IS NULL OR payment_status NOT IN ('failed', 'cancelled', 'rejected', 'error'))";
         }
 
         $stmt = $this->db->prepare($sql);
@@ -259,29 +290,31 @@ class DashboardController {
     }
 
     private function getValidatedOfferingTotal($year = null, $month = null, $memberId = null) {
-        $sql = 'SELECT COALESCE(SUM(amount), 0) FROM offerings WHERE 1=1';
+        if ($memberId !== null && !$this->hasColumn('offerings', 'member_id')) {
+            return 0.0;
+        }
+        $currencyExpr = $this->hasColumn('offerings', 'currency') ? "CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END" : "amount";
+        $sql = "SELECT COALESCE(SUM({$currencyExpr}), 0) FROM offerings WHERE 1=1";
         $params = [];
 
         if ($memberId !== null) {
-            if (!$this->hasColumn('offerings', 'member_id')) {
-                return 0.0;
-            }
             $sql .= ' AND member_id = ?';
             $params[] = $memberId;
         }
 
-        if ($year !== null) {
+        if ($year !== null && $month !== null) {
+            $start = sprintf('%04d-%02d-01', $year, $month);
+            $end = date('Y-m-d', strtotime($start . ' +1 month'));
+            $sql .= ' AND offering_date >= ? AND offering_date < ?';
+            $params[] = $start;
+            $params[] = $end;
+        } elseif ($year !== null) {
             $sql .= ' AND EXTRACT(YEAR FROM offering_date) = ?';
             $params[] = $year;
         }
 
-        if ($month !== null) {
-            $sql .= ' AND EXTRACT(MONTH FROM offering_date) = ?';
-            $params[] = (int)$month;
-        }
-
         if ($this->hasColumn('offerings', 'payment_status')) {
-            $sql .= " AND payment_status IN ('paid', 'success')";
+            $sql .= " AND (payment_status IS NULL OR payment_status NOT IN ('failed', 'cancelled', 'rejected', 'error'))";
         }
 
         $stmt = $this->db->prepare($sql);
@@ -290,21 +323,23 @@ class DashboardController {
     }
 
     private function getApprovedExpenseTotal($year = null, $month = null) {
-        $sql = 'SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE 1=1';
+        $currencyExpr = $this->hasColumn('expenses', 'currency') ? "CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END" : "amount";
+        $sql = "SELECT COALESCE(SUM({$currencyExpr}), 0) FROM expenses WHERE 1=1";
         $params = [];
 
-        if ($year !== null) {
+        if ($year !== null && $month !== null) {
+            $start = sprintf('%04d-%02d-01', $year, $month);
+            $end = date('Y-m-d', strtotime($start . ' +1 month'));
+            $sql .= ' AND expense_date >= ? AND expense_date < ?';
+            $params[] = $start;
+            $params[] = $end;
+        } elseif ($year !== null) {
             $sql .= ' AND EXTRACT(YEAR FROM expense_date) = ?';
             $params[] = $year;
         }
 
-        if ($month !== null) {
-            $sql .= ' AND EXTRACT(MONTH FROM expense_date) = ?';
-            $params[] = (int)$month;
-        }
-
         if ($this->hasColumn('expenses', 'status')) {
-            $sql .= " AND status = 'approuvee'";
+            $sql .= " AND (status IS NULL OR status::text != 'rejetee')";
         }
 
         $stmt = $this->db->prepare($sql);
@@ -322,7 +357,7 @@ class DashboardController {
         ";
 
         if ($this->hasColumn('tithes', 'payment_status')) {
-            $titheSql .= " AND payment_status IN ('paid', 'success')";
+            $titheSql .= " AND (payment_status IS NULL OR payment_status NOT IN ('failed', 'cancelled', 'rejected', 'error'))";
         }
 
         $titheSql .= ' ORDER BY tithe_date DESC LIMIT 10';
@@ -339,7 +374,7 @@ class DashboardController {
             ";
 
             if ($this->hasColumn('offerings', 'payment_status')) {
-                $offeringSql .= " AND payment_status IN ('paid', 'success')";
+                $offeringSql .= " AND (payment_status IS NULL OR payment_status NOT IN ('failed', 'cancelled', 'rejected', 'error'))";
             }
 
             $offeringSql .= ' ORDER BY offering_date DESC LIMIT 10';

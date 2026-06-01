@@ -57,8 +57,9 @@ class Expense extends BaseModel {
      */
     public function getMonthlyTotal($year, $month) {
         $result = $this->queryOne(
-            "SELECT SUM(amount) as total FROM {$this->table} 
-             WHERE EXTRACT(YEAR FROM expense_date) = ? AND EXTRACT(MONTH FROM expense_date) = ? AND status != 'rejetee'",
+            "SELECT SUM(CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END) as total FROM {$this->table} 
+             WHERE EXTRACT(YEAR FROM expense_date) = ? AND EXTRACT(MONTH FROM expense_date) = ?
+             AND (status IS NULL OR status::text != 'rejetee')",
             [$year, $month]
         );
 
@@ -69,8 +70,8 @@ class Expense extends BaseModel {
      * Total des dépenses par catégorie
      */
     public function getTotalByCategory($startDate = null, $endDate = null) {
-        $sql = "SELECT category, SUM(amount) as total, COUNT(*) as count FROM {$this->table} 
-                WHERE status != 'rejetee' AND 1=1";
+        $sql = "SELECT category, SUM(CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END) as total, COUNT(*) as count FROM {$this->table} 
+                WHERE (status IS NULL OR status::text != 'rejetee') AND 1=1";
         $params = [];
 
         if ($startDate) {
@@ -93,8 +94,9 @@ class Expense extends BaseModel {
      */
     public function getYearlyTotal($year) {
         $result = $this->queryOne(
-            "SELECT SUM(amount) as total FROM {$this->table} 
-             WHERE EXTRACT(YEAR FROM expense_date) = ? AND status != 'rejetee'",
+            "SELECT SUM(CASE WHEN currency = 'USD' THEN amount * 2800 ELSE amount END) as total FROM {$this->table} 
+             WHERE EXTRACT(YEAR FROM expense_date) = ?
+             AND (status IS NULL OR status::text != 'rejetee')",
             [$year]
         );
 
