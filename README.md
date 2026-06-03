@@ -2,6 +2,33 @@
 
 Application web complète de gestion administrative et financière pour une église, développée en PHP pur, sans framework, avec architecture MVC.
 
+## 📦 Modules du système
+
+- **Membres**
+  - Gestion complète des membres
+  - Filtrage par départements / postes
+- **Offrandes**
+  - Suivi des offrandes par nature et espèce
+- **Dîmes**
+  - Enregistrement des dîmes et historique de versements
+- **Dépenses**
+  - Gestion des dépenses avec justificatifs et workflow d'approbation
+
+## 👤 Acteurs et responsabilités
+
+- **Secrétaire**
+  - Gérer les rapports
+  - Gérer les membres
+- **Trésorerie**
+  - Gérer les finances : offrandes, cotisations, dîmes, dons
+  - Gérer les dépenses
+- **Admin**
+  - Gérer les utilisateurs
+  - Gérer les activités et audit
+- **Membre**
+  - Visiter le site
+  - Faire un don
+
 ## 🎯 Fonctionnalités Principales
 
 ### 🔐 Authentification et Autorisation

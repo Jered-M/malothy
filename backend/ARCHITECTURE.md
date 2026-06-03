@@ -2,6 +2,25 @@
 
 ## 📐 Architecture Générale
 
+### Modules du système
+
+- **Membres** → Départements / Postes
+- **Offrandes**
+- **Dîmes**
+- **Dépenses**
+
+### Acteurs et cas d'utilisation
+
+- **Secrétaire** : Gérer rapports, gérer membres
+- **Trésorerie** : Gérer finances (offrandes, cotisations, dîmes, dons), gérer dépenses
+- **Admin** : Gérer utilisateurs, gérer activités
+- **Membre** : Visiter site, faire un don
+
+### Types d'offrandes
+
+- Nature
+- Espèce
+
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │                          Client (Navigateur)                    │

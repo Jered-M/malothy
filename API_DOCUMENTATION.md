@@ -1,5 +1,19 @@
 # Documentation API MALOTY
 
+## Modules du système
+
+- Membres → Départements / Postes
+- Offrandes (nature, espèce)
+- Dîmes
+- Dépenses
+
+## Acteurs et cas d'utilisation
+
+- Secrétaire : Gérer Rapport, Gérer Membres
+- Trésorerie : Gérer Finances → Offrandes, Cotisations, Dîmes, Don, Dépenses
+- Admin : Gérer User, Gérer Activités
+- Membre : Visiter Site, Faire Don
+
 ## Structure Backend/Frontend
 
 ```

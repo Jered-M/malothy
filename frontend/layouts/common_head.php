@@ -11,7 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MALOTY - <?php echo $title ?? 'Gestion'; ?></title>
+    <title>SOURCE D'EAU VIVE - <?php echo $title ?? 'Gestion'; ?></title>
     
     <!-- Scripts & Styles -->
     <script src="https://cdn.tailwindcss.com"></script>

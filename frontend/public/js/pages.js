@@ -147,7 +147,7 @@ class Pages {
                             <div class="w-12 h-12 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white text-xl">
                                 <i class="fas fa-church"></i>
                             </div>
-                            <h2 class="text-xl font-black text-white tracking-tight uppercase">MALOTY</h2>
+                            <h2 class="text-xl font-black text-white tracking-tight uppercase">SOURCE D'EAU VIVE</h2>
                         </div>
                     </div>
 
@@ -187,7 +187,7 @@ class Pages {
                                 <div class="w-12 h-12 rounded-xl bg-brand-600 flex items-center justify-center text-white text-xl shadow-xl shadow-brand-500/30">
                                     <i class="fas fa-church"></i>
                                 </div>
-                                <h2 class="text-xl font-black text-slate-900 tracking-tight uppercase">MALOTY</h2>
+                                <h2 class="text-xl font-black text-slate-900 tracking-tight uppercase">SOURCE D'EAU VIVE</h2>
                             </div>
                         </div>
 
@@ -1903,11 +1903,11 @@ class Pages {
                                     </div>
                                     <div>
                                         <label class="field-label" for="smtp_from_email">Email de l'expéditeur (From)</label>
-                                        <input id="smtp_from_email" name="smtp_from_email" type="email" class="pro-input" placeholder="contact@malothy-church.org" value="${settings.smtp_from_email || ''}">
+                                        <input id="smtp_from_email" name="smtp_from_email" type="email" class="pro-input" placeholder="contact@source-eau-vive.org" value="${settings.smtp_from_email || ''}">
                                     </div>
                                     <div>
                                         <label class="field-label" for="smtp_from_name">Nom de l'expéditeur</label>
-                                        <input id="smtp_from_name" name="smtp_from_name" type="text" class="pro-input" placeholder="Eglise MALOTY" value="${settings.smtp_from_name || ''}">
+                                        <input id="smtp_from_name" name="smtp_from_name" type="text" class="pro-input" placeholder="Eglise SOURCE D'EAU VIVE" value="${settings.smtp_from_name || ''}">
                                     </div>
                                     <div class="md:col-span-2">
                                         <label class="field-label" for="contact_recipient_email">Email destinataire des messages de contact</label>
@@ -2309,9 +2309,6 @@ class Pages {
                             <a href="#services" class="nav-link">Ce que nous faisons</a>
                             <a href="#events" class="nav-link">Événements</a>
                             <a href="#contact" class="nav-link">Contact</a>
-                            <a href="/contribute" data-page="contribute" class="btn-primary-sm bg-emerald-600 hover:bg-emerald-700">
-                                <i class="fas fa-hand-holding-heart mr-2"></i>Offrande
-                            </a>
                             <a href="/login" data-page="login" class="text-slate-400 hover:text-slate-800 transition-colors">
                                 <i class="fas fa-user-circle text-2xl"></i>
                             </a>
@@ -2338,11 +2335,7 @@ class Pages {
                                 Une église moderne, vivante et ouverte à tous, au service de notre Dieu et de notre communauté locale pour une foi partagée.
                             </p>
                             <div class="flex flex-wrap gap-4 pt-4">
-                                <a href="/contribute" data-page="contribute" class="btn-primary py-4 px-8 text-lg bg-emerald-600 hover:bg-emerald-700 shadow-xl shadow-emerald-100">
-                                    <span>Participer à l'offrande</span>
-                                    <i class="fas fa-arrow-right"></i>
-                                </a>
-                                <a href="#events" class="btn-secondary py-4 px-8 text-lg border-2">
+                                    <a href="#events" class="btn-secondary py-4 px-8 text-lg border-2">
                                     <span>Nos événements</span>
                                 </a>
                             </div>
@@ -2568,11 +2561,6 @@ class Pages {
                     <p class="text-slate-300 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-500 max-w-sm">
                         ${desc}
                     </p>
-                </div>
-                <div class="absolute top-6 right-6">
-                    <div class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20">
-                        <i class="fas fa-plus"></i>
-                    </div>
                 </div>
             </div>
         `;

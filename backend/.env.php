@@ -55,7 +55,7 @@ if (!defined('DB_PORT')) {
     defineFromEnv('DB_PORT', $defaultPort);
 }
 
-defineFromEnv('APP_NAME', 'MALOTY - Gestion d\'Église');
+defineFromEnv('APP_NAME', 'SOURCE D\'EAU VIVE - Gestion d\'Église');
 
 // APP_URL Dynamique (Essentiel pour les redirections MaishaPay sur Render/Heroku)
 $protocol = 'http://';

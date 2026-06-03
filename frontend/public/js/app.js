@@ -186,7 +186,7 @@ class App {
             }
 
             this.currentPage = page;
-            document.title = `MALOTY - ${page.charAt(0).toUpperCase() + page.slice(1)}`;
+            document.title = `SOURCE D'EAU VIVE - ${page.charAt(0).toUpperCase() + page.slice(1)}`;
 
             // Rendu intelligent : Si on a déjà le shell et qu'on reste dans une page à shell
             if (hasShell && this.shellRendered) {
