@@ -107,13 +107,17 @@ class UI {
     static sidebar(activePage) {
         const user = this.getCurrentUser();
         const roleMeta = this.roleMeta(user.role);
-        const links = [
+            const links = [
             { id: 'dashboard', icon: 'fa-chart-line', label: 'Accueil', roles: ['admin', 'tresorier', 'secretaire'] },
             { id: 'member-dashboard', icon: 'fa-user-circle', label: 'Mon Espace', roles: ['admin', 'member'] },
             { id: 'members', icon: 'fa-users', label: 'Membres', roles: ['admin', 'secretaire'] },
+            // Finance accessible uniquement aux admins et trésorier
             { id: 'finance', icon: 'fa-wallet', label: 'Caisse', roles: ['admin', 'tresorier'] },
-            { id: 'expenses', icon: 'fa-receipt', label: 'Dépenses', roles: ['admin', 'tresorier', 'secretaire'] },
-            { id: 'reports', icon: 'fa-file-pdf', label: 'Rapports', roles: ['admin', 'tresorier'] },
+            { id: 'nature', icon: 'fa-leaf', label: 'Don en nature', roles: ['secretaire'] },
+            // Dépenses visibles par l'admin et le trésorier, création réservée au trésorier
+            { id: 'expenses', icon: 'fa-receipt', label: 'Dépenses', roles: ['admin', 'tresorier'] },
+            // Rapports pour admin et secrétaire (trésorier retiré)
+            { id: 'reports', icon: 'fa-file-pdf', label: 'Rapports', roles: ['admin', 'secretaire'] },
             { id: 'contribute', icon: 'fa-hand-holding-heart', label: 'Donner en ligne', roles: ['member'] },
             { id: 'audit-logs', icon: 'fa-clock-rotate-left', label: 'Activités', roles: ['admin'] },
             { id: 'settings', icon: 'fa-cog', label: 'Utilisateurs', roles: ['admin'] }

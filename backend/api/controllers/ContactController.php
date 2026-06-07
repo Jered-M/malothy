@@ -68,10 +68,12 @@ class ContactController {
         }
 
         $candidates = [
+            // Priorité à l'adresse configurée dans les settings
             $settings['contact_recipient_email'] ?? '',
             $settings['smtp_from_email'] ?? '',
             $settings['smtp_username'] ?? '',
-            'minonojered7@gmail.com',
+            // Valeurs par défaut demandées par l'équipe
+            '21km119@esisalama.org',
             'contact@malothy-church.org'
         ];
 

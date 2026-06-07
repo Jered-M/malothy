@@ -104,10 +104,14 @@ define('EXPENSE_CATEGORIES', [
 ]);
 
 // Types d'offrandes
+// Ajout: 'cotisation', 'nature' (don en nature) et 'espece' (espèce / cash)
 define('OFFERING_TYPES', [
     'culte' => 'Culte',
     'evenement' => 'Événement',
     'mission' => 'Mission',
+    'cotisation' => 'Cotisation',
+    'nature' => 'Don en nature',
+    'espece' => 'Espèce',
     'autre' => 'Autre'
 ]);
 ?>

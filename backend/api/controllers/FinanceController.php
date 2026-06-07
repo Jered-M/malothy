@@ -89,7 +89,7 @@ class FinanceController {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             return $this->record_offering();
         }
-        checkRole(['admin', 'Trésorier']);
+        checkRole(['admin', 'Trésorier', 'Secretaire']);
         
         $type = $_GET['type'] ?? null;
         $startDate = $_GET['start_date'] ?? null;
@@ -107,7 +107,7 @@ class FinanceController {
      * POST /api/finance/record_offering
      */
     public function record_offering() {
-        $user = checkRole(['admin', 'Trésorier']);
+        $user = checkRole(['admin', 'Trésorier', 'Secretaire']);
         $input = get_input();
 
         $required = ['type', 'amount', 'offering_date'];

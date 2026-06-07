@@ -15,6 +15,7 @@ class App {
         this.currentPage = null;
         this.currentUser = JSON.parse(localStorage.getItem('user'));
         this.shellRendered = false;
+        this.loaderTimer = null;
         this.init();
     }
 
@@ -46,9 +47,14 @@ class App {
                 e.preventDefault();
                 const page = link.getAttribute('data-page');
                 const memberId = link.getAttribute('data-edit-member');
-                
-                this.pushState(page, { memberId });
-                this.navigate(page, { memberId });
+                const defaultType = link.dataset.defaultType;
+                const returnPage = link.dataset.returnPage;
+                const params = { memberId };
+                if (defaultType) params.defaultType = defaultType;
+                if (returnPage) params.returnPage = returnPage;
+
+                this.pushState(page, params);
+                this.navigate(page, params);
                 
                 this.setSidebarOpen(false);
                 return;
@@ -99,7 +105,7 @@ class App {
             'login': 'login', 'dashboard': 'dashboard', 'members': 'members',
             'members-form': 'members-form', 'finance': 'finance', 'tithes': 'tithes',
             'tithe-form': 'tithe-form', 'offerings': 'offerings', 'offering-form': 'offering-form',
-            'expenses': 'expenses', 'expense-form': 'expense-form', 'reports': 'reports',
+            'nature': 'nature', 'expenses': 'expenses', 'expense-form': 'expense-form', 'reports': 'reports',
             'audit-logs': 'audit-logs', 'settings': 'settings', 'contribute': 'contribute',
             'home': 'home', 'member-dashboard': 'member-dashboard'
         };
@@ -139,12 +145,13 @@ class App {
                 'members-form': ['admin', 'secretaire'],
                 'tithes': ['admin', 'tresorier'],
                 'tithe-form': ['admin', 'tresorier'],
-                'offerings': ['admin', 'tresorier'],
-                'offering-form': ['admin', 'tresorier'],
+                'offerings': ['admin', 'tresorier', 'secretaire'],
+                'offering-form': ['admin', 'tresorier', 'secretaire'],
                 'finance': ['admin', 'tresorier'],
-                'expenses': ['admin', 'tresorier', 'secretaire'],
-                'expense-form': ['admin', 'tresorier', 'secretaire'],
-                'reports': ['admin', 'tresorier'],
+                'nature': ['admin', 'secretaire'],
+                'expenses': ['admin', 'tresorier'],
+                'expense-form': ['tresorier'],
+                'reports': ['admin', 'secretaire'],
                 'audit-logs': ['admin'],
                 'settings': ['admin']
             };
@@ -176,7 +183,8 @@ class App {
                 case 'tithes': html = await Pages.titheListPage(); break;
                 case 'tithe-form': html = await Pages.titheFormPage(); break;
                 case 'offerings': html = await Pages.offeringListPage(); break;
-                case 'offering-form': html = await Pages.offeringFormPage(); break;
+                case 'nature': html = await Pages.naturePage(); break;
+                case 'offering-form': html = await Pages.offeringFormPage(params.defaultType, params.returnPage); break;
                 case 'expenses': html = await Pages.expensesPage(); break;
                 case 'expense-form': html = await Pages.expenseFormPage(); break;
                 case 'reports': html = await Pages.reportsPage(); break;
@@ -284,23 +292,36 @@ class App {
 
     showLoading() {
         const loader = document.getElementById('pageLoader');
-        if (loader) loader.classList.remove('hidden');
-        else {
+        if (loader) {
+            loader.classList.remove('hidden');
+            loader.classList.remove('opacity-0');
+            return;
+        }
+
+        if (this.loaderTimer) return;
+
+        this.loaderTimer = setTimeout(() => {
             const div = document.createElement('div');
             div.id = 'pageLoader';
-            div.className = 'fixed inset-0 z-[100] bg-white/60 backdrop-blur-sm flex items-center justify-center transition-all duration-300';
+            div.className = 'fixed inset-0 z-[100] bg-white/60 backdrop-blur-sm flex items-center justify-center transition-all duration-200 opacity-100';
             div.innerHTML = '<div class="w-12 h-12 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>';
             document.body.appendChild(div);
-        }
+            this.loaderTimer = null;
+        }, 100);
     }
 
     hideLoading() {
-        const loader = document.getElementById('pageLoader');
-        if (loader) {
-            loader.classList.add('opacity-0');
-            setTimeout(() => loader.classList.add('hidden'), 300);
-            setTimeout(() => loader.classList.remove('opacity-0'), 350);
+        if (this.loaderTimer) {
+            clearTimeout(this.loaderTimer);
+            this.loaderTimer = null;
         }
+
+        const loader = document.getElementById('pageLoader');
+        if (!loader) return;
+
+        loader.classList.add('opacity-0');
+        setTimeout(() => loader.classList.add('hidden'), 120);
+        setTimeout(() => loader.classList.remove('opacity-0'), 150);
     }
 
     setSidebarOpen(isOpen) {

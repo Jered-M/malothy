@@ -87,6 +87,8 @@ CREATE TABLE offerings (
         'evenement',
         'mission',
         'cotisation',
+        'nature',
+        'espece',
         'autre'
     ) NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,

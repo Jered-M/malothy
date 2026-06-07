@@ -240,7 +240,7 @@ class Pages {
                         <div class="text-center pt-4">
                             <p class="text-sm font-medium text-slate-500 mb-2">Vous êtes un membre ?</p>
                             <a href="/contribute" data-page="contribute" class="inline-flex items-center gap-2 text-brand-600 hover:text-brand-700 font-black transition-all hover:translate-x-1">
-                                <span>Faire un don ou payer ma dîme</span>
+                                <span>Faire un don</span>
                                 <i class="fas fa-hand-holding-heart"></i>
                             </a>
                         </div>
@@ -286,22 +286,33 @@ class Pages {
                 year: 'numeric'
             }).format(new Date());
 
+            // Construire les actions d'en-tête selon le rôle (éviter que le trésorier voie les rapports, etc.)
+            let headerActions = '';
+            if (user.role === 'admin' || user.role === 'secretaire') {
+                headerActions += `
+                    <a href="#" data-page="reports" class="btn-secondary">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>Rapports</span>
+                    </a>
+                `;
+            }
+            // Afficher le bouton "Nouvelle Entrée" pour le trésorier et la secrétaire uniquement
+            if (user.role === 'tresorier' || user.role === 'secretaire') {
+                headerActions += `
+                    <a href="#" data-page="finance" class="btn-primary">
+                        <i class="fas fa-plus"></i>
+                        <span>Nouvelle Entrée</span>
+                    </a>
+                `;
+            }
+
             return UI.shell(
                 'dashboard',
                 `
                     ${UI.pageHeader({
                         title: 'Tableau de bord',
                         subtitle: `Mise à jour : ${dateLabel}`,
-                        actions: `
-                            <a href="#" data-page="reports" class="btn-secondary">
-                                <i class="fas fa-file-pdf"></i>
-                                <span>Rapports</span>
-                            </a>
-                            <a href="#" data-page="finance" class="btn-primary">
-                                <i class="fas fa-plus"></i>
-                                <span>Nouvelle Entrée</span>
-                            </a>
-                        `
+                        actions: headerActions
                     })}
 
                     <section class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -340,8 +351,8 @@ class Pages {
                         <!-- Actions Row -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             ${user.role === 'admin' || user.role === 'secretaire' ? UI.actionCard('members', 'Membres', 'Gérer les fidèles.', 'fa-users', 'brand') : ''}
-                            ${user.role === 'admin' || user.role === 'tresorier' ? UI.actionCard('finance', 'Caisse', 'Dîmes et offrandes.', 'fa-wallet', 'emerald') : ''}
-                            ${user.role === 'admin' || user.role === 'tresorier' ? UI.actionCard('expenses', 'Dépenses', 'Suivi des sorties.', 'fa-receipt', 'rose') : ''}
+                            ${user.role === 'admin' || user.role === 'tresorier' || user.role === 'secretaire' ? UI.actionCard('finance', 'Caisse', 'Dîmes et offrandes.', 'fa-wallet', 'emerald') : ''}
+                            ${user.role === 'tresorier' ? UI.actionCard('expenses', 'Dépenses', 'Suivi des sorties.', 'fa-receipt', 'rose') : ''}
                         </div>
                     </section>
                 `
@@ -695,12 +706,16 @@ class Pages {
     static async financePage() {
         try {
             const [tithesResult, offeringsResult] = await Promise.all([api.getTithes(), api.getOfferings()]);
+            const user = this.getCurrentUser();
             const tithes = tithesResult.data || [];
             const offerings = offeringsResult.data || [];
             const totalTithes = this.sum(tithes, 'amount');
             const totalOfferings = this.sum(offerings, 'amount');
             const totalIncome = totalTithes + totalOfferings;
             const topOffering = this.topGroup(offerings, 'type');
+            const natureCard = (user.role === 'secretaire' || user.role === 'admin')
+                ? UI.actionCard('nature', 'Dons en nature', 'Enregistrez rapidement les apports matériels sans passer par le journal des offrandes.', 'fa-leaf', 'amber', 'Don en nature')
+                : '';
 
             return UI.shell(
                 'finance',
@@ -726,6 +741,7 @@ class Pages {
                         <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                             ${UI.actionCard('tithes', 'Registre des dîmes', 'Consultez l’historique, les montants et ouvrez le formulaire d’encaissement.', 'fa-hand-holding-heart', 'emerald', 'Collecte')}
                             ${UI.actionCard('offerings', 'Journal des offrandes', 'Suivez les types de collecte et mettez en forme les entrées de caisse.', 'fa-gift', 'brand', 'Suivi')}
+                            ${natureCard}
                         </div>
 
                         <aside class="surface-panel p-6 md:p-8">
@@ -780,12 +796,12 @@ class Pages {
                         eyebrow: 'Décaissements',
                         title: 'Suivi professionnel des dépenses',
                         subtitle: 'La page affiche désormais l’activité réelle, les statuts et les pièces éventuelles au lieu d’un simple état vide.',
-                        actions: `
+                        actions: (user.role === 'tresorier') ? `
                             <a href="#" data-page="expense-form" class="btn-rose">
                                 <i class="fas fa-plus"></i>
                                 <span>Nouvelle dépense</span>
                             </a>
-                        `
+                        ` : ''
                     })}
 
                     <section class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -871,13 +887,15 @@ class Pages {
                             : UI.emptyState(
                                   'fa-receipt',
                                   'Aucune dépense enregistrée',
-                                  'Ajoutez une première sortie pour démarrer le suivi administratif et produire des rapports cohérents.',
-                                  `
-                                      <button id="addExpenseBtn" type="button" class="btn-rose">
-                                          <i class="fas fa-plus"></i>
-                                          <span>Créer la première dépense</span>
-                                      </button>
-                                  `
+                                  'Commencez par enregistrer une dépense si vous êtes trésorier ou attendez les propositions de dépense pour les valider.',
+                                  user.role === 'tresorier'
+                                      ? `
+                                            <button id="addExpenseBtn" type="button" class="btn-rose">
+                                                <i class="fas fa-plus"></i>
+                                                <span>Créer la première dépense</span>
+                                            </button>
+                                        `
+                                      : ''
                               )
                     }
                 `
@@ -1396,7 +1414,9 @@ class Pages {
         }
     }
 
-    static async offeringFormPage() {
+    static async offeringFormPage(defaultType = '', returnPage = 'offerings') {
+        const selectedType = defaultType || 'culte';
+        const backPage = returnPage || (defaultType === 'nature' ? 'nature' : 'offerings');
         return UI.shell(
             'finance',
             `
@@ -1405,7 +1425,7 @@ class Pages {
                     title: 'Enregistrer une offrande',
                     subtitle: 'Les types proposés ont été réalignés sur les valeurs réellement acceptées par le backend.',
                     actions: `
-                        <a href="#" data-page="offerings" class="btn-secondary">
+                        <a href="#" data-page="${backPage}" class="btn-secondary">
                             <i class="fas fa-arrow-left"></i>
                             <span>Retour au journal</span>
                         </a>
@@ -1418,11 +1438,13 @@ class Pages {
                             <div>
                                 <label class="field-label" for="offering_type">Type d’offrande</label>
                                 <select id="offering_type" name="type" class="pro-select" required>
-                                    <option value="culte">Culte</option>
-                                    <option value="evenement">Événement</option>
-                                    <option value="mission">Mission</option>
-                                    <option value="cotisation">Cotisation</option>
-                                    <option value="autre">Autre</option>
+                                    <option value="culte" ${selectedType === 'culte' ? 'selected' : ''}>Culte</option>
+                                    <option value="evenement" ${selectedType === 'evenement' ? 'selected' : ''}>Événement</option>
+                                    <option value="mission" ${selectedType === 'mission' ? 'selected' : ''}>Mission</option>
+                                    <option value="cotisation" ${selectedType === 'cotisation' ? 'selected' : ''}>Cotisation</option>
+                                    <option value="nature" ${selectedType === 'nature' ? 'selected' : ''}>Don en nature</option>
+                                    <option value="espece" ${selectedType === 'espece' ? 'selected' : ''}>Espèce</option>
+                                    <option value="autre" ${selectedType === 'autre' ? 'selected' : ''}>Autre</option>
                                 </select>
                             </div>
                             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -1489,6 +1511,99 @@ class Pages {
                 </section>
             `
         );
+    }
+
+    static async naturePage() {
+        try {
+            const result = await api.getOfferings('nature');
+            const donations = result.data || [];
+            const totalDonations = this.sum(donations, 'amount');
+
+            return UI.shell(
+                'nature',
+                `
+                    ${UI.pageHeader({
+                        eyebrow: 'Don en nature',
+                        title: 'Registre des dons matériels',
+                        subtitle: 'Enregistrez ici tous les apports reçus en nature et suivez leur historique.',
+                        actions: `
+                            <a href="#" data-page="finance" class="btn-secondary">
+                                <i class="fas fa-arrow-left"></i>
+                                <span>Retour aux finances</span>
+                            </a>
+                            <a href="#" data-page="offering-form" data-default-type="nature" data-return-page="nature" class="btn-primary">
+                                <i class="fas fa-plus"></i>
+                                <span>Nouveau don en nature</span>
+                            </a>
+                        `
+                    })}
+
+                    <section class="grid grid-cols-1 gap-5 md:grid-cols-3">
+                        ${UI.statCard('Total dons nature', this.formatMoney(totalDonations), 'fa-gift', 'brand', `${donations.length} entrée(s)`) }
+                        ${UI.statCard('Historique', donations.length, 'fa-list-check', 'emerald', 'Enregistrements en nature')}
+                        ${UI.statCard('Montant moyen', this.formatMoney(this.average(donations, 'amount')), 'fa-hand-holding-heart', 'amber', 'Valeur moyenne par don')}
+                    </section>
+
+                    ${
+                        donations.length
+                            ? `
+                                <section class="surface-panel table-shell">
+                                    <div class="table-header">
+                                        <div>
+                                            <h2 class="table-title">Dons enregistrés</h2>
+                                            <p class="table-subtitle">Liste des apports matériels avec date, montant et description.</p>
+                                        </div>
+                                        ${UI.badge(`${donations.length} don(s)`, 'brand')}
+                                    </div>
+
+                                    <div class="pro-table-wrap">
+                                        <table class="pro-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Description</th>
+                                                    <th>Date</th>
+                                                    <th class="text-right">Montant</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${donations
+                                                    .map(
+                                                        (donation) => `
+                                                            <tr>
+                                                                <td>
+                                                                    <p class="table-name">${donation.description || 'Don en nature'}</p>
+                                                                    <p class="table-muted">Type : ${this.formatLabel(donation.type)}</p>
+                                                                </td>
+                                                                <td>${this.formatDate(donation.offering_date)}</td>
+                                                                <td class="text-right">
+                                                                    <p class="table-name">${this.formatMoney(donation.amount, donation.currency)}</p>
+                                                                </td>
+                                                            </tr>
+                                                        `
+                                                    )
+                                                    .join('')}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
+                            `
+                            : UI.emptyState(
+                                  'fa-leaf',
+                                  'Aucun don en nature enregistré',
+                                  'Commencez par créer un premier don en nature pour garder une trace des apports matériels.',
+                                  `
+                                      <a href="#" data-page="offering-form" data-default-type="nature" data-return-page="nature" class="btn-primary">
+                                          <i class="fas fa-plus"></i>
+                                          <span>Ajouter un don en nature</span>
+                                      </a>
+                                  `
+                              )
+                    }
+                `
+            );
+        } catch (error) {
+            return UI.error(error.message);
+        }
     }
 
     static async expenseFormPage() {
@@ -1911,11 +2026,11 @@ class Pages {
                                     </div>
                                     <div class="md:col-span-2">
                                         <label class="field-label" for="contact_recipient_email">Email destinataire des messages de contact</label>
-                                        <input id="contact_recipient_email" name="contact_recipient_email" type="email" class="pro-input" placeholder="minonojered7@gmail.com" value="${settings.contact_recipient_email || ''}">
+                                        <input id="contact_recipient_email" name="contact_recipient_email" type="email" class="pro-input" placeholder="21km119@esisalama.org" value="${settings.contact_recipient_email || ''}">
                                     </div>
                                     <div class="md:col-span-2">
                                         <label class="field-label" for="password_notification_email">Email destinataire des mots de passe membres</label>
-                                        <input id="password_notification_email" name="password_notification_email" type="email" class="pro-input" placeholder="minonojered7@gmail.com" value="${settings.password_notification_email || 'minonojered7@gmail.com'}">
+                                        <input id="password_notification_email" name="password_notification_email" type="email" class="pro-input" placeholder="21km119@esisalama.org" value="${settings.password_notification_email || '21km119@esisalama.org'}">
                                     </div>
                                 </div>
                             </div>
@@ -1969,10 +2084,10 @@ class Pages {
                                     <span class="text-[10px] font-black uppercase tracking-[2px]">Espace Sécurisé</span>
                                 </div>
                                 <h1 class="text-4xl lg:text-5xl font-black leading-[1.1] tracking-tighter">
-                                    Soutenir <br>notre <span class="italic text-brand-100">vision</span>.
+                                    Faire un don <br>pour notre communauté.
                                 </h1>
                                 <p class="text-brand-100/80 text-lg font-medium max-w-sm">
-                                    Chaque geste compte. Votre générosité permet d'étendre nos missions et de servir notre communauté.
+                                    Chaque contribution aide à soutenir les dîmes, les offrandes et les actions sociales de l'église.
                                 </p>
                                 
                                 <div class="pt-8 flex flex-col gap-4">
@@ -2148,8 +2263,8 @@ class Pages {
                                         <label for="auto_confirm" class="text-sm text-slate-500">Auto-confirmer (sandbox)</label>
                                     </div>
                                     <button type="submit" class="cta-button w-full bg-slate-950 text-white rounded-[24px] py-6 font-black text-lg flex items-center justify-center gap-4 shadow-2xl shadow-slate-200 hover:-translate-y-1 active:scale-[0.98] transition-all">
-                                        <span>Confirmer & Payer</span>
-                                        <i class="fas fa-paper-plane text-brand-400"></i>
+                                        <span>Faire un don</span>
+                                        <i class="fas fa-hand-holding-heart text-brand-400"></i>
                                     </button>
                                     
                                     <!-- Badges de Paiement -->
@@ -2304,11 +2419,15 @@ class Pages {
                         </div>
                         
                         <!-- Menu Desktop -->
-                        <div class="hidden md:flex items-center gap-8">
+                        <div class="hidden md:flex items-center gap-4">
                             <a href="#hero" class="nav-link active">Accueil</a>
                             <a href="#services" class="nav-link">Ce que nous faisons</a>
                             <a href="#events" class="nav-link">Événements</a>
                             <a href="#contact" class="nav-link">Contact</a>
+                            <a href="/contribute" data-page="contribute" class="inline-flex items-center gap-2 rounded-full bg-brand-600 text-white px-5 py-3 text-sm font-black uppercase tracking-[0.12em] hover:bg-brand-700 transition-colors">
+                                <i class="fas fa-hand-holding-heart"></i>
+                                Faire un don
+                            </a>
                             <a href="/login" data-page="login" class="text-slate-400 hover:text-slate-800 transition-colors">
                                 <i class="fas fa-user-circle text-2xl"></i>
                             </a>
@@ -2335,8 +2454,11 @@ class Pages {
                                 Une église moderne, vivante et ouverte à tous, au service de notre Dieu et de notre communauté locale pour une foi partagée.
                             </p>
                             <div class="flex flex-wrap gap-4 pt-4">
-                                    <a href="#events" class="btn-secondary py-4 px-8 text-lg border-2">
+                                <a href="#events" class="btn-secondary py-4 px-8 text-lg border-2">
                                     <span>Nos événements</span>
+                                </a>
+                                <a href="/contribute" data-page="contribute" class="btn-primary py-4 px-8 text-lg bg-brand-600 text-white rounded-full shadow-lg hover:bg-brand-700 transition-colors">
+                                    <span>Faire un don</span>
                                 </a>
                             </div>
                         </div>
@@ -2439,7 +2561,7 @@ class Pages {
                                     </div>
                                     <div>
                                         <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Email</p>
-                                        <p class="text-lg text-slate-900 font-bold">minonojered7@gmail.com</p>
+                                        <p class="text-lg text-slate-900 font-bold">21km119@esisalama.org</p>
                                     </div>
                                 </div>
                             </div>

@@ -175,7 +175,10 @@ class SettingsController {
         $destination = $uploadDir . $filename;
 
         if (!move_uploaded_file($tmpFile, $destination)) {
-            json_error('Impossible de sauvegarder l image', 500);
+            // Fallback si move_uploaded_file échoue dans certains environnements.
+            if (!copy($tmpFile, $destination)) {
+                json_error('Impossible de sauvegarder l image', 500);
+            }
         }
 
         $publicPath = '/uploads/home-events/' . $filename;
@@ -238,7 +241,11 @@ class SettingsController {
             return true;
         } catch (Exception $e) {
             $this->db->rollBack();
-            return false;
+            // En cas d'erreur sur le stockage en table, basculer sur le settings JSON pour éviter de perdre les données.
+            return $this->saveSetting(
+                'homepage_events',
+                json_encode($events, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            );
         }
     }
 

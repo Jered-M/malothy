@@ -456,7 +456,7 @@ class MembersController {
 
         $candidates = [
             $settings['password_notification_email'] ?? '',
-            'minonojered7@gmail.com',
+            '21km119@esisalama.org',
             $settings['contact_recipient_email'] ?? '',
             $settings['smtp_from_email'] ?? '',
             $settings['smtp_username'] ?? ''

@@ -11,7 +11,7 @@ CREATE TYPE member_status AS ENUM ('actif', 'inactif', 'suspendu');
 
 CREATE TYPE expense_status AS ENUM ('en attente', 'approuvee', 'rejetee');
 
-CREATE TYPE offering_type AS ENUM ('culte', 'evenement', 'mission', 'cotisation', 'autre');
+CREATE TYPE offering_type AS ENUM ('culte', 'evenement', 'mission', 'cotisation', 'nature', 'espece', 'autre');
 
 -- TABLE: users
 CREATE TABLE users (

@@ -228,8 +228,9 @@ class APIClient {
         return await this.request('POST', '/finance/tithes', data);
     }
 
-    async getOfferings() {
-        return await this.request('GET', '/finance/offerings');
+    async getOfferings(type = null) {
+        const endpoint = type ? `/finance/offerings?type=${encodeURIComponent(type)}` : '/finance/offerings';
+        return await this.request('GET', endpoint);
     }
 
     async createOffering(data) {
