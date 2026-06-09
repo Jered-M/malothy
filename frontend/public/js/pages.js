@@ -350,7 +350,7 @@ class Pages {
 
                         <!-- Actions Row -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            ${user.role === 'admin' ? UI.actionCard('members', 'Membres', 'Gérer les fidèles.', 'fa-users', 'brand') : ''}
+                            ${user.role === 'admin' || user.role === 'tresorier' || user.role === 'secretaire' ? UI.actionCard('members', 'Membres', 'Gérer les fidèles.', 'fa-users', 'brand') : ''}
                             ${user.role === 'admin' || user.role === 'tresorier' || user.role === 'secretaire' ? UI.actionCard('finance', 'Caisse', 'Dîmes et offrandes.', 'fa-wallet', 'emerald') : ''}
                             ${user.role === 'tresorier' ? UI.actionCard('expenses', 'Dépenses', 'Suivi des sorties.', 'fa-receipt', 'rose') : ''}
                         </div>

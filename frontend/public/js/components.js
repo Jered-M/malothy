@@ -35,8 +35,8 @@ class UI {
         return {
             dashboard: ['admin', 'tresorier', 'secretaire'],
             'member-dashboard': ['admin', 'member'],
-            members: ['admin'],
-            'members-form': ['admin','secretaire','tresorier'],
+            members: ['admin', 'tresorier', 'secretaire'],
+            'members-form': ['admin', 'tresorier', 'secretaire'],
             finance: ['admin', 'tresorier'],
             tithes: ['admin', 'tresorier'],
             'tithe-form': ['admin', 'tresorier'],
