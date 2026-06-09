@@ -182,13 +182,16 @@ class SettingsController {
         }
 
         $publicPath = '/uploads/home-events/' . $filename;
+        // Stocker l'image en data URL pour qu'elle survive aux redéploiements
+        // (le disque du conteneur Docker/Render est éphémère).
+        $dataUrl = $this->encodeImageFileAsDataUrl($destination, $mimeType);
 
         json_response([
             'success' => true,
             'message' => 'Image envoyee avec succes',
             'data' => [
                 'path' => $publicPath,
-                'url' => $publicPath
+                'url' => $dataUrl ?: $publicPath
             ]
         ]);
     }
@@ -333,15 +336,35 @@ class SettingsController {
             return '';
         }
 
+        if (preg_match('#^data:image/(jpeg|png|webp|gif);base64,#i', $imageUrl)) {
+            return $imageUrl;
+        }
+
         if (preg_match('#^https?://#i', $imageUrl)) {
             return $imageUrl;
         }
 
         if (preg_match('#^/?uploads/home-events/#i', $imageUrl)) {
-            return '/' . ltrim($imageUrl, '/');
+            $relativePath = '/' . ltrim(parse_url($imageUrl, PHP_URL_PATH) ?: $imageUrl, '/');
+            $dataUrl = $this->encodeImageFileAsDataUrl(PROJECT_ROOT . $relativePath);
+            return $dataUrl ?: $relativePath;
         }
 
         return '';
+    }
+
+    private function encodeImageFileAsDataUrl($absolutePath, $mimeType = null) {
+        if (!is_string($absolutePath) || $absolutePath === '' || !is_file($absolutePath)) {
+            return null;
+        }
+
+        $mimeType = $mimeType ?: detect_mime_type($absolutePath, 'image/jpeg');
+        $data = file_get_contents($absolutePath);
+        if ($data === false) {
+            return null;
+        }
+
+        return 'data:' . $mimeType . ';base64,' . base64_encode($data);
     }
 
     private function getSettingValue($key) {

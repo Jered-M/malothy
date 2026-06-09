@@ -168,9 +168,16 @@ class ReportController {
      * Export data as CSV (members, tithes, offerings, expenses)
      */
     public function export_csv() {
-        get_authenticated_user();
+        $user = get_authenticated_user();
         
         $type = $_GET['type'] ?? 'members'; // members, tithes, offerings, expenses
+
+        if ($type === 'members') {
+            $role = strtolower($user['role'] ?? '');
+            if ($role !== 'admin' && $role !== 'administrateur') {
+                json_error('Seul un administrateur peut exporter la liste des membres', 403);
+            }
+        }
         $year = $_GET['year'] ?? date('Y');
         
         header('Content-Type: text/csv; charset=utf-8');

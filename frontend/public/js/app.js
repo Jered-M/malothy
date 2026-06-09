@@ -138,25 +138,9 @@ class App {
 
             // 2. Vérification Rôles
             const role = UI.normalizeRole(this.currentUser?.role);
-            const perms = {
-                'dashboard': ['admin', 'tresorier', 'secretaire'],
-                'member-dashboard': ['admin', 'member'],
-                'members': ['admin', 'secretaire'],
-                'members-form': ['admin', 'secretaire'],
-                'tithes': ['admin', 'tresorier'],
-                'tithe-form': ['admin', 'tresorier'],
-                'offerings': ['admin', 'tresorier', 'secretaire'],
-                'offering-form': ['admin', 'tresorier', 'secretaire'],
-                'finance': ['admin', 'tresorier'],
-                'nature': ['admin', 'secretaire'],
-                'expenses': ['admin', 'tresorier'],
-                'expense-form': ['tresorier'],
-                'reports': ['admin', 'secretaire'],
-                'audit-logs': ['admin'],
-                'settings': ['admin']
-            };
+            const pagePermissions = UI.pagePermissions();
 
-            if (!isPublic && perms[page] && !perms[page].includes(role)) {
+            if (!isPublic && pagePermissions[page] && !UI.canAccessPage(page, role)) {
                 const fallback = role === 'member' ? 'member-dashboard' : 'dashboard';
                 this.navigate(fallback);
                 this.pushState(fallback, {}, true);
@@ -181,7 +165,17 @@ class App {
                 case 'members-form': html = await Pages.memberFormPage(params.memberId); break;
                 case 'finance': html = await Pages.financePage(); break;
                 case 'tithes': html = await Pages.titheListPage(); break;
-                case 'tithe-form': html = await Pages.titheFormPage(); break;
+                case 'tithe-form': {
+                    let titheMembers = [];
+                    try {
+                        const membersResult = await api.getPublicMembers();
+                        titheMembers = membersResult.data || [];
+                    } catch (error) {
+                        console.warn('Impossible de charger les membres pour la dîme:', error.message);
+                    }
+                    html = await Pages.titheFormPage(titheMembers);
+                    break;
+                }
                 case 'offerings': html = await Pages.offeringListPage(); break;
                 case 'nature': html = await Pages.naturePage(); break;
                 case 'offering-form': html = await Pages.offeringFormPage(params.defaultType, params.returnPage); break;
@@ -202,8 +196,14 @@ class App {
                 temp.innerHTML = html;
                 const newContent = temp.querySelector('.app-main-inner');
                 const oldContent = document.querySelector('.app-main-inner');
+                const newSidebar = temp.querySelector('.app-sidebar');
+                const oldSidebar = document.querySelector('.app-sidebar');
                 
                 if (newContent && oldContent) {
+                    if (newSidebar && oldSidebar) {
+                        oldSidebar.replaceWith(newSidebar);
+                    }
+
                     oldContent.innerHTML = newContent.innerHTML;
                     
                     // Mettre à jour le lien actif dans la sidebar

@@ -31,6 +31,36 @@ class UI {
         return 'member'; // Default for safety
     }
 
+    static pagePermissions() {
+        return {
+            dashboard: ['admin', 'tresorier', 'secretaire'],
+            'member-dashboard': ['admin', 'member'],
+            members: ['admin'],
+            'members-form': ['admin'],
+            finance: ['admin', 'tresorier'],
+            tithes: ['admin', 'tresorier'],
+            'tithe-form': ['admin', 'tresorier'],
+            offerings: ['admin', 'tresorier', 'secretaire'],
+            'offering-form': ['admin', 'tresorier', 'secretaire'],
+            nature: ['admin', 'secretaire'],
+            expenses: ['admin', 'tresorier'],
+            'expense-form': ['tresorier'],
+            reports: ['admin', 'secretaire'],
+            contribute: ['member'],
+            'audit-logs': ['admin'],
+            settings: ['admin']
+        };
+    }
+
+    static canAccessPage(pageId, roleInput) {
+        const role = this.normalizeRole(roleInput);
+        const allowed = this.pagePermissions()[pageId];
+        if (!Array.isArray(allowed)) {
+            return true;
+        }
+        return allowed.includes(role);
+    }
+
     static roleMeta(role) {
         const normalized = this.normalizeRole(role);
         const meta = {
@@ -106,22 +136,20 @@ class UI {
 
     static sidebar(activePage) {
         const user = this.getCurrentUser();
-        const roleMeta = this.roleMeta(user.role);
-            const links = [
-            { id: 'dashboard', icon: 'fa-chart-line', label: 'Accueil', roles: ['admin', 'tresorier', 'secretaire'] },
-            { id: 'member-dashboard', icon: 'fa-user-circle', label: 'Mon Espace', roles: ['admin', 'member'] },
-            { id: 'members', icon: 'fa-users', label: 'Membres', roles: ['admin', 'secretaire'] },
-            // Finance accessible uniquement aux admins et trésorier
-            { id: 'finance', icon: 'fa-wallet', label: 'Caisse', roles: ['admin', 'tresorier'] },
-            { id: 'nature', icon: 'fa-leaf', label: 'Don en nature', roles: ['secretaire'] },
-            // Dépenses visibles par l'admin et le trésorier, création réservée au trésorier
-            { id: 'expenses', icon: 'fa-receipt', label: 'Dépenses', roles: ['admin', 'tresorier'] },
-            // Rapports pour admin et secrétaire (trésorier retiré)
-            { id: 'reports', icon: 'fa-file-pdf', label: 'Rapports', roles: ['admin', 'secretaire'] },
-            { id: 'contribute', icon: 'fa-hand-holding-heart', label: 'Donner en ligne', roles: ['member'] },
-            { id: 'audit-logs', icon: 'fa-clock-rotate-left', label: 'Activités', roles: ['admin'] },
-            { id: 'settings', icon: 'fa-cog', label: 'Utilisateurs', roles: ['admin'] }
-        ].filter((link) => link.roles.includes(user.role));
+        const role = this.normalizeRole(user.role);
+        const roleMeta = this.roleMeta(role);
+        const links = [
+            { id: 'dashboard', icon: 'fa-chart-line', label: 'Accueil' },
+            { id: 'member-dashboard', icon: 'fa-user-circle', label: 'Mon Espace' },
+            { id: 'members', icon: 'fa-users', label: 'Membres' },
+            { id: 'finance', icon: 'fa-wallet', label: 'Caisse' },
+            { id: 'nature', icon: 'fa-leaf', label: 'Don en nature' },
+            { id: 'expenses', icon: 'fa-receipt', label: 'Dépenses' },
+            { id: 'reports', icon: 'fa-file-pdf', label: 'Rapports' },
+            { id: 'contribute', icon: 'fa-hand-holding-heart', label: 'Donner en ligne' },
+            { id: 'audit-logs', icon: 'fa-clock-rotate-left', label: 'Activités' },
+            { id: 'settings', icon: 'fa-cog', label: 'Utilisateurs' }
+        ].filter((link) => this.canAccessPage(link.id, role));
 
         return `
             <aside class="app-sidebar shadow-2xl">

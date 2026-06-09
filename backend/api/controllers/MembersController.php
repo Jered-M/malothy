@@ -20,7 +20,7 @@ class MembersController {
      * GET /api/members
      */
     public function index() {
-        checkRole(['admin', 'secretaire']);
+        checkRole(['admin']);
 
         $members = $this->db
             ->query('SELECT id, first_name, last_name, email, phone, department, status FROM members ORDER BY first_name')
@@ -36,7 +36,7 @@ class MembersController {
      * GET /api/members/:id
      */
     public function show($id) {
-        checkRole(['admin', 'secretaire']);
+        checkRole(['admin']);
 
         $stmt = $this->db->prepare('SELECT * FROM members WHERE id = ?');
         $stmt->execute([$id]);
@@ -56,7 +56,7 @@ class MembersController {
      * POST /api/members
      */
     public function create() {
-        checkRole(['admin', 'secretaire']);
+        checkRole(['admin']);
 
         $input = get_input();
 
@@ -155,7 +155,7 @@ class MembersController {
      * PUT /api/members/:id
      */
     public function update($id) {
-        checkRole(['admin', 'secretaire']);
+        checkRole(['admin']);
 
         $input = get_input();
 
@@ -255,7 +255,7 @@ class MembersController {
      * DELETE /api/members/:id
      */
     public function delete($id) {
-        checkRole(['admin', 'secretaire']);
+        checkRole(['admin']);
 
         $stmtEmail = $this->db->prepare('SELECT email FROM members WHERE id = ?');
         $stmtEmail->execute([$id]);
@@ -294,7 +294,7 @@ class MembersController {
      * POST /api/members/:id/photo
      */
     public function upload_photo($id) {
-        checkRole(['admin', 'secretaire']);
+        checkRole(['admin']);
 
         $stmt = $this->db->prepare('SELECT id FROM members WHERE id = ?');
         $stmt->execute([$id]);
@@ -370,7 +370,7 @@ class MembersController {
      * DELETE /api/members/:id/photo
      */
     public function delete_photo($id) {
-        checkRole(['admin', 'secretaire']);
+        checkRole(['admin']);
 
         $stmt = $this->db->prepare('SELECT photo FROM members WHERE id = ?');
         $stmt->execute([$id]);

@@ -350,7 +350,7 @@ class Pages {
 
                         <!-- Actions Row -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            ${user.role === 'admin' || user.role === 'secretaire' ? UI.actionCard('members', 'Membres', 'Gérer les fidèles.', 'fa-users', 'brand') : ''}
+                            ${user.role === 'admin' ? UI.actionCard('members', 'Membres', 'Gérer les fidèles.', 'fa-users', 'brand') : ''}
                             ${user.role === 'admin' || user.role === 'tresorier' || user.role === 'secretaire' ? UI.actionCard('finance', 'Caisse', 'Dîmes et offrandes.', 'fa-wallet', 'emerald') : ''}
                             ${user.role === 'tresorier' ? UI.actionCard('expenses', 'Dépenses', 'Suivi des sorties.', 'fa-receipt', 'rose') : ''}
                         </div>
@@ -1010,18 +1010,28 @@ class Pages {
 
     static async titheFormPage(members = []) {
         if (!members.length) {
+            const user = this.getCurrentUser();
+            const canCreateMember = UI.canAccessPage('members-form', user.role);
+            const emptyAction = canCreateMember
+                ? `
+                    <a href="#" data-page="members-form" class="btn-primary">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Créer un membre</span>
+                    </a>
+                `
+                : `
+                    <p class="text-sm font-medium text-slate-500">
+                        Contactez un administrateur pour ajouter des membres au registre.
+                    </p>
+                `;
+
             return UI.shell(
                 'finance',
                 UI.emptyState(
                     'fa-users',
                     'Aucun membre disponible',
                     'Le formulaire de dîme a besoin d’un membre existant pour rattacher correctement la contribution.',
-                    `
-                        <a href="#" data-page="members-form" class="btn-primary">
-                            <i class="fas fa-user-plus"></i>
-                            <span>Créer un membre</span>
-                        </a>
-                    `
+                    emptyAction
                 )
             );
         }
@@ -1133,20 +1143,22 @@ class Pages {
                         type: 'balance'
                     })
                     : '',
-                this.reportCard({
-                    href: '#',
-                    title: 'Membres CSV',
-                    subtitle: 'Liste complÃ¨te',
-                    icon: 'fa-file-csv',
-                    tone: 'emerald',
-                    label: 'TÃ©lÃ©charger',
-                    action: 'export-csv',
-                    type: 'members'
-                }),
                 isAdmin
                     ? this.reportCard({
                         href: '#',
-                        title: 'DÃ®mes PDF',
+                        title: 'Membres CSV',
+                        subtitle: 'Liste complète',
+                        icon: 'fa-file-csv',
+                        tone: 'emerald',
+                        label: 'Télécharger',
+                        action: 'export-csv',
+                        type: 'members'
+                    })
+                    : '',
+                isAdmin
+                    ? this.reportCard({
+                        href: '#',
+                        title: 'Dîmes PDF',
                         subtitle: 'Rapport complet',
                         icon: 'fa-file-pdf',
                         tone: 'brand',
@@ -1244,16 +1256,20 @@ class Pages {
                             action: 'export-pdf',
                             type: 'balance'
                         })}
-                        ${this.reportCard({
-                            href: '#',
-                            title: 'Membres CSV',
-                            subtitle: 'Liste complète',
-                            icon: 'fa-file-csv',
-                            tone: 'emerald',
-                            label: 'Télécharger',
-                            action: 'export-csv',
-                            type: 'members'
-                        })}
+                        ${
+                            isAdmin
+                                ? this.reportCard({
+                                    href: '#',
+                                    title: 'Membres CSV',
+                                    subtitle: 'Liste complète',
+                                    icon: 'fa-file-csv',
+                                    tone: 'emerald',
+                                    label: 'Télécharger',
+                                    action: 'export-csv',
+                                    type: 'members'
+                                })
+                                : ''
+                        }
                         ${this.reportCard({
                             href: '#',
                             title: 'Dîmes PDF',
@@ -1941,11 +1957,17 @@ class Pages {
                                                     <p class="mt-3 text-sm font-medium leading-7 text-slate-500">${event.description || ''}</p>
                                                     ${event.image_url ? `
                                                         <div class="mt-4 overflow-hidden rounded-2xl border border-slate-100 bg-white">
-                                                            <img src="${event.image_url}" alt="${event.title || 'Evenement'}" class="h-44 w-full object-cover">
+                                                            <img src="${event.image_url}" alt="${event.title || 'Evenement'}" class="h-44 w-full object-cover" onerror="this.closest('.overflow-hidden')?.remove()">
                                                         </div>
                                                     ` : ''}
                                                     <div class="mt-4 rounded-2xl bg-white px-4 py-3 text-xs font-medium text-slate-500">
-                                                        ${event.image_url || 'Aucune image definie'}
+                                                        ${
+                                                            event.image_url
+                                                                ? (String(event.image_url).startsWith('data:')
+                                                                    ? 'Image enregistree en base de donnees'
+                                                                    : event.image_url)
+                                                                : 'Aucune image definie'
+                                                        }
                                                     </div>
                                                     <div class="mt-5 flex flex-wrap gap-3">
                                                         <button type="button" data-edit-home-event="${index}" class="btn-secondary">
@@ -2673,9 +2695,13 @@ class Pages {
     }
 
     static eventCard(title, date, desc, img) {
+        const fallbackImage =
+            'https://images.unsplash.com/photo-1510563800743-aed236490d08?auto=format&fit=crop&q=80';
+        const imageSrc = img || fallbackImage;
+
         return `
             <div class="relative h-80 rounded-4xl overflow-hidden group">
-                <img src="${img}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                <img src="${imageSrc}" onerror="this.onerror=null;this.src='${fallbackImage}'" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="${title}">
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
                 <div class="absolute bottom-0 left-0 p-8 space-y-2">
                     <p class="text-blue-400 font-black uppercase tracking-[0.2em] text-[10px]">${date}</p>
