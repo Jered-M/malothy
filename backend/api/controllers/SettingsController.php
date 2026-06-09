@@ -36,6 +36,13 @@ class SettingsController {
             $data[$setting['setting_key']] = $setting['setting_value'];
         }
 
+        if (!empty($data['smtp_password'])) {
+            $data['smtp_password'] = '';
+        }
+        if (!empty($data['flutterwave_secret_key'])) {
+            $data['flutterwave_secret_key'] = '';
+        }
+
         json_response([
             'success' => true,
             'data' => $data
@@ -57,6 +64,10 @@ class SettingsController {
 
         try {
             foreach ($input as $key => $value) {
+                if ($this->shouldSkipSecretSettingUpdate((string)$key, $value)) {
+                    continue;
+                }
+
                 $valueString = is_string($value)
                     ? $value
                     : json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -72,6 +83,39 @@ class SettingsController {
         } catch (Exception $e) {
             $this->db->rollBack();
             json_error('Erreur SQL: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST /api/settings/test-smtp
+     */
+    public function test_smtp() {
+        checkRole(['admin']);
+        require_once PROJECT_ROOT . '/backend/api/services/MailerService.php';
+
+        $input = get_input();
+        $recipient = filter_var(trim((string)($input['to'] ?? '')), FILTER_VALIDATE_EMAIL);
+        if (!$recipient) {
+            $recipient = filter_var(trim((string)$this->getSettingValue('contact_recipient_email')), FILTER_VALIDATE_EMAIL);
+        }
+        if (!$recipient) {
+            json_error('Indiquez un email de test valide ou configurez le destinataire contact.', 400);
+        }
+
+        try {
+            $mailer = new MailerService();
+            $mailer->sendEmail(
+                $recipient,
+                "Test SMTP - SOURCE D'EAU VIVE",
+                '<p>Ceci est un email de test envoye depuis les parametres de l application.</p><p>Si vous recevez ce message, la configuration SMTP est correcte.</p>'
+            );
+
+            json_response([
+                'success' => true,
+                'message' => 'Email de test envoye a ' . $recipient
+            ]);
+        } catch (Exception $e) {
+            json_error('Echec du test SMTP : ' . $e->getMessage(), 500);
         }
     }
 
@@ -365,6 +409,19 @@ class SettingsController {
         }
 
         return 'data:' . $mimeType . ';base64,' . base64_encode($data);
+    }
+
+    private function shouldSkipSecretSettingUpdate($key, $value) {
+        if (!in_array($key, ['smtp_password', 'flutterwave_secret_key'], true)) {
+            return false;
+        }
+
+        $trimmed = trim((string)$value);
+        if ($trimmed === '') {
+            return true;
+        }
+
+        return (bool)preg_match('/^\*+$/', $trimmed);
     }
 
     private function getSettingValue($key) {

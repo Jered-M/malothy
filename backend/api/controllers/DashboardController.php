@@ -32,7 +32,7 @@ class DashboardController {
 
         // Simple file-cache to reduce DB load for frequent dashboard refreshes
         $cacheFile = PROJECT_ROOT . '/tmp/dashboard_cache.json';
-        $cacheTtl = 30; // seconds
+        $cacheTtl = 90; // seconds
         if (file_exists($cacheFile)) {
             $cached = @json_decode(@file_get_contents($cacheFile), true);
             if (!empty($cached['ts']) && (time() - $cached['ts'] < $cacheTtl)) {
@@ -61,14 +61,28 @@ class DashboardController {
     }
 
     private function getStats() {
-        $membersActive = $this->db->query("SELECT COUNT(*) as count FROM members WHERE status = 'actif'")->fetch();
-        $membersTotal = $this->db->query("SELECT COUNT(*) as count FROM members")->fetch();
+        $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        if ($driver === 'pgsql') {
+            $membersRow = $this->db->query("
+                SELECT
+                    COUNT(*) AS total,
+                    COUNT(*) FILTER (WHERE status = 'actif') AS active
+                FROM members
+            ")->fetch();
+        } else {
+            $membersRow = $this->db->query("
+                SELECT
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN status = 'actif' THEN 1 ELSE 0 END) AS active
+                FROM members
+            ")->fetch();
+        }
         $year = date('Y');
         $month = date('m');
 
         return [
-            'totalMembers' => (int)($membersTotal['count'] ?? 0),
-            'activeMembers' => (int)($membersActive['count'] ?? 0),
+            'totalMembers' => (int)($membersRow['total'] ?? 0),
+            'activeMembers' => (int)($membersRow['active'] ?? 0),
             'monthlyTithes' => $this->getValidatedTitheTotal($year, $month),
             'monthlyOfferings' => $this->getValidatedOfferingTotal($year, $month),
             'monthlyExpenses' => $this->getApprovedExpenseTotal($year, $month),

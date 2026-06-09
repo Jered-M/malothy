@@ -36,7 +36,7 @@ class UI {
             dashboard: ['admin', 'tresorier', 'secretaire'],
             'member-dashboard': ['admin', 'member'],
             members: ['admin'],
-            'members-form': ['admin'],
+            'members-form': ['admin','secretaire','tresorier'],
             finance: ['admin', 'tresorier'],
             tithes: ['admin', 'tresorier'],
             'tithe-form': ['admin', 'tresorier'],
@@ -132,6 +132,23 @@ class UI {
                 <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden lg:hidden opacity-0 transition-opacity duration-300"></div>
             </div>
         `;
+    }
+
+    static setSidebarActivePage(activePage) {
+        document.querySelectorAll('.app-nav a').forEach((link) => {
+            const isMain = link.getAttribute('data-page') === activePage;
+            link.classList.toggle('bg-blue-600', isMain);
+            link.classList.toggle('text-white', isMain);
+            link.classList.toggle('shadow-md', isMain);
+            link.classList.toggle('text-slate-400', !isMain);
+            link.classList.toggle('hover:text-white', !isMain);
+            link.classList.toggle('hover:bg-white/5', !isMain);
+            const iconWrap = link.querySelector('span');
+            if (iconWrap) {
+                iconWrap.classList.toggle('bg-white/20', isMain);
+                iconWrap.classList.toggle('bg-white/5', !isMain);
+            }
+        });
     }
 
     static sidebar(activePage) {

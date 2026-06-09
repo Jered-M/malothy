@@ -8,6 +8,32 @@ const API_BASE_URL = '/api';
 class APIClient {
     constructor() {
         this.token = localStorage.getItem('token');
+        this.cache = new Map();
+        this.defaultCacheTtl = 45000;
+    }
+
+    getCached(method, endpoint) {
+        if (method !== 'GET') return null;
+        const entry = this.cache.get(`${method}:${endpoint}`);
+        if (!entry) return null;
+        if (Date.now() - entry.ts > entry.ttl) {
+            this.cache.delete(`${method}:${endpoint}`);
+            return null;
+        }
+        return entry.data;
+    }
+
+    setCached(method, endpoint, data, ttl = this.defaultCacheTtl) {
+        if (method !== 'GET' || !data) return;
+        this.cache.set(`${method}:${endpoint}`, { ts: Date.now(), ttl, data });
+    }
+
+    invalidateCache(prefix = '') {
+        for (const key of this.cache.keys()) {
+            if (!prefix || key.includes(prefix)) {
+                this.cache.delete(key);
+            }
+        }
     }
 
     isPublicAuthEndpoint(endpoint) {
@@ -127,6 +153,17 @@ class APIClient {
     }
 
     async request(method, endpoint, data = null, opts = {}) {
+        const suppressAuthRedirect = opts.suppressAuthRedirect === true;
+        const cacheTtl = opts.cacheTtl ?? this.defaultCacheTtl;
+        const noCache = opts.noCache === true;
+
+        if (method === 'GET' && !noCache) {
+            const cached = this.getCached(method, endpoint);
+            if (cached) {
+                return cached;
+            }
+        }
+
         const requestOptions = {
             method,
             headers: this.getAuthHeaders(endpoint, {
@@ -134,7 +171,6 @@ class APIClient {
             }),
             credentials: 'include'
         };
-        const suppressAuthRedirect = opts.suppressAuthRedirect === true;
 
         if (data && (method === 'POST' || method === 'PUT')) {
             if (data instanceof FormData) {
@@ -176,12 +212,19 @@ class APIClient {
             throw new Error(result?.error || `Erreur API (${response.status})`);
         }
 
+        if (method === 'GET' && !noCache) {
+            this.setCached(method, endpoint, result, cacheTtl);
+        } else if (method !== 'GET') {
+            this.invalidateCache(endpoint.split('/')[1] || '');
+        }
+
         return result;
     }
 
     // ============ AUTH ============
     async loginWith(email, password) {
         const result = await this.request('POST', '/auth/login', { email, password });
+        this.invalidateCache();
         this.persistSession(result.user, result.token);
         return result;
     }
@@ -238,19 +281,23 @@ class APIClient {
     }
 
     async getDashboard() {
-        return await this.request('GET', '/dashboard');
+        return await this.request('GET', '/dashboard', null, { cacheTtl: 60000 });
     }
 
     async getMemberDashboard() {
-        return await this.request('GET', '/dashboard/member');
+        return await this.request('GET', '/dashboard/member', null, { cacheTtl: 45000 });
     }
 
     async getHomeEvents() {
-        return await this.request('GET', '/settings/home-events');
+        return await this.request('GET', '/settings/home-events', null, { cacheTtl: 120000 });
     }
 
     async saveHomeEvents(events) {
         return await this.request('POST', '/settings/home-events', { events });
+    }
+
+    async testSmtp(to = '') {
+        return await this.request('POST', '/settings/test-smtp', { to });
     }
 
     async uploadHomeEventImage(file) {

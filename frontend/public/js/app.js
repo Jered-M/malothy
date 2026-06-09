@@ -16,14 +16,28 @@ class App {
         this.currentUser = JSON.parse(localStorage.getItem('user'));
         this.shellRendered = false;
         this.loaderTimer = null;
+        this.financeChart = null;
+        this.chartLibraryPromise = null;
         this.init();
     }
 
     async init() {
         const token = localStorage.getItem('token');
 
-        // Restaurer la session avant de décider de la page
-        if (token) {
+        // Session locale immédiate, validation API en arrière-plan
+        if (token && this.currentUser) {
+            api.getProfile()
+                .then((result) => {
+                    if (result && result.success) {
+                        this.currentUser = result.user;
+                        localStorage.setItem('user', JSON.stringify(this.currentUser));
+                    } else {
+                        api.clearSession();
+                        this.currentUser = null;
+                    }
+                })
+                .catch(() => {});
+        } else if (token) {
             try {
                 const result = await api.getProfile();
                 if (result && result.success) {
@@ -35,8 +49,6 @@ class App {
                 }
             } catch (e) {
                 console.log('--- Erreur restauration session ---', e);
-                // On garde la session locale si l'API est injoignable (mode dégradé)
-                // sauf si c'est une erreur 401 explicite (déjà gérée par api.request)
             }
         }
 
@@ -151,7 +163,10 @@ class App {
             const app = document.getElementById('app');
             const hasShell = !['login', 'home', 'contribute'].includes(page);
             
-            this.showLoading();
+            const fastShellNav = hasShell && this.shellRendered;
+            if (!fastShellNav) {
+                this.showLoading();
+            }
 
             let html = '';
             // Charger le HTML via Pages
@@ -191,38 +206,18 @@ class App {
             document.title = `SOURCE D'EAU VIVE - ${page.charAt(0).toUpperCase() + page.slice(1)}`;
 
             // Rendu intelligent : Si on a déjà le shell et qu'on reste dans une page à shell
-            if (hasShell && this.shellRendered) {
+            if (fastShellNav) {
                 const temp = document.createElement('div');
                 temp.innerHTML = html;
                 const newContent = temp.querySelector('.app-main-inner');
                 const oldContent = document.querySelector('.app-main-inner');
-                const newSidebar = temp.querySelector('.app-sidebar');
-                const oldSidebar = document.querySelector('.app-sidebar');
                 
                 if (newContent && oldContent) {
-                    if (newSidebar && oldSidebar) {
-                        oldSidebar.replaceWith(newSidebar);
-                    }
-
                     oldContent.innerHTML = newContent.innerHTML;
-                    
-                    // Mettre à jour le lien actif dans la sidebar
-                    document.querySelectorAll('.app-nav a').forEach(link => {
-                        const isMain = link.getAttribute('data-page') === page;
-                        if (isMain) {
-                            link.classList.add('bg-blue-600', 'text-white', 'shadow-md');
-                            link.classList.remove('text-slate-400', 'hover:text-white', 'hover:bg-white/5');
-                            link.querySelector('span')?.classList.replace('bg-white/5', 'bg-white/20');
-                        } else {
-                            link.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
-                            link.classList.add('text-slate-400', 'hover:text-white', 'hover:bg-white/5');
-                            link.querySelector('span')?.classList.replace('bg-white/20', 'bg-white/5');
-                        }
-                    });
+                    UI.setSidebarActivePage(page);
 
                     this.currentPage = page;
                     this.attachEvents(page, params);
-                    this.hideLoading();
                     return;
                 }
             }
@@ -230,9 +225,10 @@ class App {
             app.innerHTML = html;
             this.shellRendered = hasShell;
 
-            // 4. Post-rendu (Attacher les événements)
             this.attachEvents(page, params);
-            this.initPasswordToggles();
+            if (['login', 'members-form', 'settings'].includes(page)) {
+                this.initPasswordToggles();
+            }
             this.hideLoading();
 
         } catch (error) {
@@ -303,11 +299,11 @@ class App {
         this.loaderTimer = setTimeout(() => {
             const div = document.createElement('div');
             div.id = 'pageLoader';
-            div.className = 'fixed inset-0 z-[100] bg-white/60 backdrop-blur-sm flex items-center justify-center transition-all duration-200 opacity-100';
-            div.innerHTML = '<div class="w-12 h-12 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>';
+            div.className = 'fixed inset-0 z-[100] bg-white/40 flex items-center justify-center transition-opacity duration-150 opacity-100';
+            div.innerHTML = '<div class="w-10 h-10 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>';
             document.body.appendChild(div);
             this.loaderTimer = null;
-        }, 100);
+        }, 250);
     }
 
     hideLoading() {
@@ -482,8 +478,25 @@ class App {
         }
     }
 
-    initDashboard() {
-        // Initialiser les graphiques Chart.js s'il y a des donnees
+    async loadChartLibrary() {
+        if (window.Chart) {
+            return window.Chart;
+        }
+        if (this.chartLibraryPromise) {
+            return this.chartLibraryPromise;
+        }
+        this.chartLibraryPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+            script.async = true;
+            script.onload = () => resolve(window.Chart);
+            script.onerror = () => reject(new Error('Impossible de charger Chart.js'));
+            document.head.appendChild(script);
+        });
+        return this.chartLibraryPromise;
+    }
+
+    async initDashboard() {
         const ctx = document.getElementById('financeChart');
         if (ctx) {
             const chartData = window.app?.dashboardChartData;
@@ -507,7 +520,13 @@ class App {
                 return;
             }
 
-            new Chart(ctx, {
+            if (this.financeChart) {
+                this.financeChart.destroy();
+                this.financeChart = null;
+            }
+
+            const ChartLib = await this.loadChartLibrary();
+            this.financeChart = new ChartLib(ctx, {
                 type: 'line',
                 data: {
                     labels,
@@ -926,11 +945,11 @@ class App {
         if (settingsForm) {
             settingsForm.onsubmit = async (e) => {
                 e.preventDefault();
-                const formData = new FormData(settingsForm);
-                const data = Object.fromEntries(formData.entries());
-                
+                const data = this.collectSettingsPayload(settingsForm);
+
                 try {
                     const result = await api.request('POST', '/settings', data);
+                    api.invalidateCache();
                     if (result.success) {
                         alert('Paramètres enregistrés avec succès !');
                     } else {
@@ -941,6 +960,45 @@ class App {
                 }
             };
         }
+
+        const testSmtpBtn = document.querySelector('#testSmtpBtn');
+        if (testSmtpBtn) {
+            testSmtpBtn.onclick = async () => {
+                const settingsFormEl = document.querySelector('#settingsForm');
+                if (!settingsFormEl) return;
+
+                const payload = this.collectSettingsPayload(settingsFormEl);
+                const testEmail =
+                    payload.contact_recipient_email ||
+                    payload.smtp_from_email ||
+                    payload.smtp_username ||
+                    '';
+
+                try {
+                    testSmtpBtn.disabled = true;
+                    if (Object.keys(payload).length) {
+                        await api.request('POST', '/settings', payload);
+                    }
+                    const result = await api.testSmtp(testEmail);
+                    alert(result.message || 'Email de test envoye.');
+                } catch (error) {
+                    alert('Test SMTP echoue : ' + error.message);
+                } finally {
+                    testSmtpBtn.disabled = false;
+                }
+            };
+        }
+    }
+
+    collectSettingsPayload(form) {
+        const data = Object.fromEntries(new FormData(form).entries());
+        ['smtp_password', 'flutterwave_secret_key'].forEach((key) => {
+            const value = String(data[key] || '').trim();
+            if (!value || /^\*+$/.test(value)) {
+                delete data[key];
+            }
+        });
+        return data;
     }
 
     attachReportEvents() {

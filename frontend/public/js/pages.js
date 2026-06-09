@@ -1798,24 +1798,15 @@ class Pages {
 
     static async settingsPage() {
         try {
-            const result = await api.request('GET', '/users');
-            const users = result.data || [];
+            const [usersResult, eventsResult, settingsResult] = await Promise.all([
+                api.request('GET', '/users').catch(() => ({ data: [] })),
+                api.getHomeEvents().catch(() => ({ data: [] })),
+                api.request('GET', '/settings').catch(() => ({ data: {} }))
+            ]);
 
-            let homeEvents = [];
-            try {
-                const eventsResult = await api.getHomeEvents();
-                homeEvents = Array.isArray(eventsResult.data) ? eventsResult.data : [];
-            } catch (err) {
-                console.warn('Impossible de charger les evenements admin', err);
-            }
-            
-            let settings = {};
-            try {
-                const settingsResult = await api.request('GET', '/settings');
-                settings = settingsResult.data || {};
-            } catch (err) {
-                console.warn('Impossible de charger les paramètres', err);
-            }
+            const users = usersResult.data || [];
+            const homeEvents = Array.isArray(eventsResult.data) ? eventsResult.data : [];
+            const settings = settingsResult.data || {};
             
             const admins = users.filter((user) => UI.normalizeRole(user.role) === 'admin').length;
             const treasurers = users.filter((user) => UI.normalizeRole(user.role) === 'tresorier').length;
@@ -2012,7 +2003,7 @@ class Pages {
                                     </div>
                                     <div>
                                         <label class="field-label" for="flutterwave_secret_key">Clé Secrète (Secret Key)</label>
-                                        <input id="flutterwave_secret_key" name="flutterwave_secret_key" type="password" class="pro-input" placeholder="FLWSECK-xx-X" value="${settings.flutterwave_secret_key || ''}">
+                                        <input id="flutterwave_secret_key" name="flutterwave_secret_key" type="password" class="pro-input" placeholder="Laisser vide pour conserver la cle actuelle" autocomplete="new-password">
                                     </div>
                                 </div>
                             </div>
@@ -2035,8 +2026,9 @@ class Pages {
                                         <input id="smtp_username" name="smtp_username" type="text" class="pro-input" placeholder="votre_email@domaine.com" value="${settings.smtp_username || ''}">
                                     </div>
                                     <div>
-                                        <label class="field-label" for="smtp_password">Mot de passe SMTP</label>
-                                        <input id="smtp_password" name="smtp_password" type="password" class="pro-input" placeholder="********" value="${settings.smtp_password || ''}">
+                                        <label class="field-label" for="smtp_password">Mot de passe SMTP (cle Brevo)</label>
+                                        <input id="smtp_password" name="smtp_password" type="password" class="pro-input" placeholder="Laisser vide pour conserver la cle actuelle" autocomplete="new-password">
+                                        <p class="mt-2 text-xs font-medium text-slate-500">Sur Brevo, utilisez la cle SMTP generee dans SMTP & API, pas le mot de passe de votre compte.</p>
                                     </div>
                                     <div>
                                         <label class="field-label" for="smtp_from_email">Email de l'expéditeur (From)</label>
@@ -2056,7 +2048,11 @@ class Pages {
                                     </div>
                                 </div>
                             </div>
-                            <div class="pt-4 flex justify-end">
+                            <div class="pt-4 flex flex-wrap justify-end gap-3">
+                                <button type="button" id="testSmtpBtn" class="btn-secondary">
+                                    <i class="fas fa-paper-plane"></i>
+                                    <span>Tester l envoi SMTP</span>
+                                </button>
                                 <button type="submit" class="btn-primary">
                                     <i class="fas fa-save"></i>
                                     <span>Enregistrer les paramètres</span>

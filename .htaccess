@@ -43,9 +43,9 @@
     ExpiresByType image/x-icon "access plus 1 year"
     
     # CSS et JavaScript (Désactiver pendant le dev pour éviter les boucles de cache)
-    ExpiresByType text/css "access plus 1 hour"
-    ExpiresByType text/javascript "access 0 seconds"
-    ExpiresByType application/javascript "access 0 seconds"
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType text/javascript "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
     
     # HTML (Toujours rafraîchir pour éviter les boucles de redirection cachées)
     ExpiresByType text/html "access 0 seconds"
